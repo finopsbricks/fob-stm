@@ -1,4 +1,4 @@
-import { addOrg } from '../../config.js';
+import { addOrg } from '../config-store.js';
 import { refreshIdentity } from './_identity.js';
 
 export async function addConfigHandler(argv) {

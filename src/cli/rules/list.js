@@ -6,8 +6,8 @@ import {
   formatPaginationHint,
   formatCsv,
   formatDate,
-} from '../../utils/format.js';
-import { buildColumnSelector } from '../../utils/list.js';
+} from '../utils/format.js';
+import { buildColumnSelector } from '../utils/list.js';
 import { clientFor } from '../_helpers.js';
 
 // API PUBLIC_FIELDS plus CLI-only derived columns (counts + cache subfields).

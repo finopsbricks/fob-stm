@@ -1,4 +1,4 @@
-import { describeCurrent } from '../../config.js';
+import { describeCurrent } from '../config-store.js';
 
 export async function currentConfigHandler(argv) {
   const cur = describeCurrent();

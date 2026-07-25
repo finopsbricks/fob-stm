@@ -1,7 +1,7 @@
 // @ts-check
 import { writeFileSync } from 'fs';
-import { formatTable, formatCsv, formatCurrency } from '../../utils/format.js';
-import { buildColumnSelector } from '../../utils/list.js';
+import { formatTable, formatCsv, formatCurrency } from '../utils/format.js';
+import { buildColumnSelector } from '../utils/list.js';
 import { clientFor, validateDateRange } from '../_helpers.js';
 
 // Public fields the API exposes.

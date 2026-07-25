@@ -8,8 +8,8 @@ import {
   formatCurrency,
   formatCsv,
   formatDate,
-} from '../../utils/format.js';
-import { buildColumnSelector, parseStatus } from '../../utils/list.js';
+} from '../utils/format.js';
+import { buildColumnSelector, parseStatus } from '../utils/list.js';
 
 // Public fields the API exposes (mirrors statements app PUBLIC_FIELDS).
 const PUBLIC_FIELDS = [

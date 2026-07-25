@@ -1,5 +1,5 @@
 import { fobStm } from '../../index.js';
-import { getProfileCredentials, setProfileIdentity } from '../../config.js';
+import { getProfileCredentials, setProfileIdentity } from '../config-store.js';
 
 /**
  * Resolve a profile's server-side org identity (whoami) and cache it as

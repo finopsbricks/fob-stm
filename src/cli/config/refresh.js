@@ -1,4 +1,4 @@
-import { listProfiles } from '../../config.js';
+import { listProfiles } from '../config-store.js';
 import { refreshIdentity } from './_identity.js';
 
 export async function refreshConfigHandler(argv) {

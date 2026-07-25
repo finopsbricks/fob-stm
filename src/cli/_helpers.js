@@ -2,7 +2,7 @@
  * Shared yargs helpers.
  */
 
-import { resolveCredentials } from '../config.js';
+import { resolveCredentials } from './config-store.js';
 import { fobStm } from '../index.js';
 
 /**

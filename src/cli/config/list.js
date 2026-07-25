@@ -1,5 +1,5 @@
-import { listProfiles } from '../../config.js';
-import { formatTable } from '../../utils/format.js';
+import { listProfiles } from '../config-store.js';
+import { formatTable } from '../utils/format.js';
 
 export async function listConfigHandler(argv) {
   const { current, path, profiles } = listProfiles();

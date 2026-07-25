@@ -7,8 +7,8 @@ import {
   formatPaginationHint,
   formatAmount,
   formatCsv,
-} from '../../utils/format.js';
-import { buildColumnSelector } from '../../utils/list.js';
+} from '../utils/format.js';
+import { buildColumnSelector } from '../utils/list.js';
 
 // Public fields the API exposes (mirrors statements app PUBLIC_FIELDS).
 const PUBLIC_FIELDS = [

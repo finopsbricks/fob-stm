@@ -1,6 +1,6 @@
 // @ts-check
 import { clientFor } from '../_helpers.js';
-import { formatField, formatTable, formatAmount } from '../../utils/format.js';
+import { formatField, formatTable, formatAmount } from '../utils/format.js';
 
 export async function extractedStatementHandler(argv) {
   const stm = clientFor();

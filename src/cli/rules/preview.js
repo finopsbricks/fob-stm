@@ -1,5 +1,5 @@
 // @ts-check
-import { formatTable, formatAmount } from '../../utils/format.js';
+import { formatTable, formatAmount } from '../utils/format.js';
 import { clientFor } from '../_helpers.js';
 
 const COLUMNS = ['ID', 'DATE', 'PARTICULARS', 'TYPE', 'INFLOW', 'OUTFLOW'];

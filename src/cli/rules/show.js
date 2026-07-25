@@ -1,5 +1,5 @@
 // @ts-check
-import { formatField, formatDate } from '../../utils/format.js';
+import { formatField, formatDate } from '../utils/format.js';
 import { clientFor } from '../_helpers.js';
 
 export async function showRuleHandler(argv) {

@@ -1,4 +1,4 @@
-import { removeOrg } from '../../config.js';
+import { removeOrg } from '../config-store.js';
 
 export async function removeConfigHandler(argv) {
   removeOrg(argv.name);

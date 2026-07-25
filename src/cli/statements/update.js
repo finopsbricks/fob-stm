@@ -1,6 +1,6 @@
 // @ts-check
 import { clientFor } from '../_helpers.js';
-import { formatField, formatAmount } from '../../utils/format.js';
+import { formatField, formatAmount } from '../utils/format.js';
 
 function toMilliUnits(value, label) {
   if (value === undefined) return undefined;

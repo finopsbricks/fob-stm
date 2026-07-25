@@ -9,7 +9,7 @@
 
 import yargs from 'yargs';
 
-import { setOrgOverride } from '../config.js';
+import { setOrgOverride } from './config-store.js';
 import { buildConfigSubcommands } from './config/index.js';
 import { buildAccountsSubcommands } from './accounts/index.js';
 import { buildTransactionsSubcommands } from './transactions/index.js';

@@ -4,7 +4,7 @@ import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { parseContentDispositionFilename } from '../../http.js';
 import { clientFor } from '../_helpers.js';
-import { formatBytes } from '../../utils/format.js';
+import { formatBytes } from '../utils/format.js';
 
 export async function downloadStatementHandler(argv) {
   const stm = clientFor();

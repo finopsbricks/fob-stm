@@ -11,7 +11,7 @@ const {
   addOrg, removeOrg, useOrg, listOrgs, listProfiles, configPath,
   getProfileCredentials, setProfileIdentity, describeCurrent,
   loadConfig, resolveCredentials, setOrgOverride,
-} = await import('../src/config.js');
+} = await import('../src/cli/config-store.js');
 
 const creds = (n) => ({ api_url: `https://${n}.example/`, api_key: `k_${n}`, api_secret: `s_${n}` });
 
