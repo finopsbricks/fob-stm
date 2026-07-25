@@ -32,6 +32,7 @@ the alternatives, and the current standard
 ([engineering-standards: cli/auth-patterns.md](/Users/alex/ec2code/alex/engineering-standards/cli/auth-patterns.md))
 documents it without laying out the upgrade path.
 
+
 ## Proposed Solution
 
 **Guiding principle (Alex, 2026-07-25):** optimize for release velocity + low day-one complexity,

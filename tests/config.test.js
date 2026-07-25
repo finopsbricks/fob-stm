@@ -7,8 +7,10 @@ import { join } from 'node:path';
 const dir = join(mkdtempSync(join(tmpdir(), 'stm-')), 'nested'); // does not exist yet
 process.env.FOB_STM_CONFIG_DIR = dir;
 
-const { addOrg, removeOrg, useOrg, listOrgs, loadConfig, resolveCredentials, setOrgOverride } =
-  await import('../src/config.js');
+const {
+  addOrg, removeOrg, useOrg, listOrgs, listProfiles, configPath,
+  loadConfig, resolveCredentials, setOrgOverride,
+} = await import('../src/config.js');
 
 const creds = (n) => ({ api_url: `https://${n}.example/`, api_key: `k_${n}`, api_secret: `s_${n}` });
 
@@ -26,6 +28,19 @@ describe('config store (~/.fob/fob-stm/config.yml)', () => {
     const file = join(dir, 'config.yml');
     expect(existsSync(file)).toBe(true);
     expect(statSync(file).mode & 0o777).toBe(0o600);
+  });
+
+  it('listProfiles returns display rows (no secrets) + the config path', () => {
+    const { current, path, profiles } = listProfiles();
+    expect(current).toBe('acme');
+    expect(path).toBe(configPath());
+    expect(path).toBe(join(dir, 'config.yml'));
+    expect(profiles).toEqual([
+      { name: 'acme', current: true, api_url: 'https://acme.example/', org_id: undefined, org_slug: undefined },
+      { name: 'other', current: false, api_url: 'https://other.example/', org_id: undefined, org_slug: undefined },
+    ]);
+    // secrets must never appear in the display rows
+    expect(JSON.stringify(profiles)).not.toMatch(/api_key|api_secret|k_acme|s_acme/);
   });
 
   it('resolves credentials for the current org', () => {

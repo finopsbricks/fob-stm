@@ -30,7 +30,7 @@ export function run(argv) {
     .middleware((argv) => {
       if (argv.org) setOrgOverride(argv.org);
     })
-    .command('config <action>', 'Manage statements credentials', buildConfigSubcommands)
+    .command('config <resource>', 'Manage credential profiles (alias: orgs)', buildConfigSubcommands)
     .command('accounts <action>', 'Query accounts', buildAccountsSubcommands)
     .command('transactions <action>', 'Query transactions', buildTransactionsSubcommands)
     .command('statements <action>', 'Query uploaded statement files', buildStatementsResourceSubcommands)

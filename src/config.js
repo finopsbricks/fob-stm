@@ -49,7 +49,7 @@ export function addOrg(name, { api_url, api_key, api_secret }) {
 
 export function removeOrg(name) {
   const cfg = loadConfig();
-  if (!cfg.orgs[name]) throw new Error(`No configured org named '${name}'.`);
+  if (!cfg.orgs[name]) throw new Error(`No profile named '${name}'.`);
   delete cfg.orgs[name];
   if (cfg.current_org === name) cfg.current_org = Object.keys(cfg.orgs)[0] ?? null;
   saveConfig(cfg);
@@ -58,7 +58,7 @@ export function removeOrg(name) {
 
 export function useOrg(name) {
   const cfg = loadConfig();
-  if (!cfg.orgs[name]) throw new Error(`No configured org named '${name}'. Run \`fob-stm config add ${name}\`.`);
+  if (!cfg.orgs[name]) throw new Error(`No profile named '${name}'. Run \`fob-stm config profiles add ${name}\`.`);
   cfg.current_org = name;
   saveConfig(cfg);
   return cfg;
@@ -67,6 +67,28 @@ export function useOrg(name) {
 export function listOrgs() {
   const cfg = loadConfig();
   return { current: cfg.current_org, orgs: Object.keys(cfg.orgs) };
+}
+
+/** Absolute path to the config file (shown in the `profiles list` footer). */
+export function configPath() {
+  return CONFIG_PATH;
+}
+
+/**
+ * Profiles for display. Returns the current profile name, the config path, and
+ * one row per profile with non-secret metadata only (api_url, plus org_id /
+ * org_slug once resolved — WIP decision G). Secrets are never included.
+ */
+export function listProfiles() {
+  const cfg = loadConfig();
+  const profiles = Object.entries(cfg.orgs).map(([name, o]) => ({
+    name,
+    current: name === cfg.current_org,
+    api_url: o.api_url,
+    org_id: o.org_id,
+    org_slug: o.org_slug,
+  }));
+  return { current: cfg.current_org, path: CONFIG_PATH, profiles };
 }
 
 /**
@@ -79,7 +101,7 @@ export function resolveCredentials() {
 
   if (orgOverride) {
     const org = cfg.orgs[orgOverride];
-    if (!org) throw new Error(`--org '${orgOverride}' is not configured. Run \`fob-stm config add ${orgOverride}\`.`);
+    if (!org) throw new Error(`--org '${orgOverride}' is not configured. Run \`fob-stm config profiles add ${orgOverride}\`.`);
     return { ...org, source: `org '${orgOverride}'` };
   }
 
@@ -98,6 +120,6 @@ export function resolveCredentials() {
   }
 
   throw new Error(
-    "No statements credentials. Run `fob-stm config add <org>`, or set FOB_STM_API_URL/API_KEY/API_SECRET.",
+    "No statements credentials. Run `fob-stm config profiles add <name>`, or set FOB_STM_API_URL/API_KEY/API_SECRET.",
   );
 }
