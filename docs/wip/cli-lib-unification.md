@@ -170,9 +170,25 @@ than printing `undefined`.
 - [x] Superseded accounts-superset changes were reverted back in the Phase-2 commit prep.
 - [x] Migrated `_identity.js` onto `fobStm(creds).whoami()`; nothing imports `client.js` anymore.
 
-### Phase 5: Rewrite worker consumers ❌
-Tracked in the parent WIP's "migrate worker consumers" item — now a **rewrite** onto `fobStm`
-(worker-alex ×13, worker-sarveda ×3), not a compat shim. Do after the CLI+lib refactor lands.
+### Phase 5: Rewrite worker consumers 🔄 (source done; blocked on publish/test)
+Rewrote all 16 files onto `fobStm` (worker-sarveda ×3, worker-alex ×13). **Clean cut** (no compat):
+- `import { fobStm } from '@fob/stm'`; global-env steps use `fobStm()`, the multi-org AV line uses
+  `fobStm(resolveOrgCredentials(org))`. `resolveOrgCredentials` + both `.env.example`s renamed to
+  **`FOB_STM_API_*` (origin-only)**; `package.json` deps swapped to `@fob/stm`.
+- Return-shape fixes: `get*/balance/create*/updateStatement/updateChecks/runRule` now return the
+  record (dropped `.data`); `list`/`getAll` unchanged. `getAllStatementsForAccount(id)` →
+  `stm.statements.getAll({ account: id })`; `getAllTransactions(id)` → `stm.transactions.getAll({ accounts: id })`.
+- P3_03's `/transactions/search` (no namespace method) uses the transport escape hatch
+  `apiPost('/api/v1/transactions/search', …)`; rule-link builders read origin-only `FOB_STM_API_URL`.
+- All files syntax-clean; no `@fob/lib-worker-statements` / `FOB_STATEMENTS_` left.
+
+**BLOCKERS before this runs (cannot be done/tested from here):**
+- [ ] **Publish `@fob/stm` to GitHub** (`cli/fob-stm` → a repo + tag). The worker `package.json` dep
+      `github:finopsbricks/fob-stm#v0.1.0` is a **guess** — confirm repo/tag, then `npm install` in both workers.
+- [ ] **Rename deploy secrets** `FOB_STATEMENTS_API_*` → `FOB_STM_API_*` (origin-only URL, no `/api/v1`),
+      including the per-org `FOB_STM_API_*_<ORG>` for the AV line.
+- [ ] **Smoke-run** one step per worker once installed (esp. AV multi-org + P3 search).
+- [ ] Worker-repo commits are **held** pending the above (untested against an unpublished dep).
 
 ## Related Files
 
