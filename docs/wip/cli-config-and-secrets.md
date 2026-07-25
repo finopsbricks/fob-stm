@@ -1,6 +1,6 @@
 # CLI Config & Secrets — Standard for the `fob-<tool>` Family
 
-## Status: IN PROGRESS (~65%)
+## Status: IN PROGRESS (~85%)
 
 Decide how `fob-stm` (and every future `fob-<tool>`) stores config, models multiple accounts, and
 manages secrets — grounded in a survey of 14 mature CLIs. Goal: a **simple, secure-enough baseline**
@@ -9,10 +9,9 @@ advanced security (keychain, scoped/short-lived tokens) over time. **Decided (20
 baseline is plaintext `0600` under a single family root `~/.fob/<tool>/`; encryption and OS-native
 dirs are added later as additive, opt-in layers. Credential profiles are managed under a
 `config profiles <verb>` namespace (blanket `profiles` object + a per-CLI domain alias like `orgs`),
-in a single `config.yml` (no config/credentials split). Profiles will also cache each org's
-server-resolved identity (`org_id`/`org_slug`) via the statements-app `whoami` endpoint —
-**now shipped (G): `GET /api/v1/whoami` + `getIdentity()` in the shared client**; remaining G work is
-wiring it into the fob-stm CLI (`profiles add`/`refresh`, enriched `list`). Remaining:
+in a single `config.yml` (no config/credentials split). Profiles cache each org's server-resolved
+identity (`org_id`/`org_slug`) via the statements-app `GET /api/v1/whoami` — **shipped end-to-end (G):
+endpoint + `getIdentity()` + `profiles add`/`refresh` + enriched `list`, verified live**. Remaining:
 `config status`/whoami polish (D). Token lifecycle (C) parked — no strong preference.
 
 ---
@@ -145,8 +144,8 @@ The one architectural constraint to honor from day one: **keep secret storage be
       always in `config.yml`). See
       [global-vs-project-config.md](./cli-industry-research/global-vs-project-config.md).
 - [x] **G — auto-resolve & cache each profile's org identity (`org_id`, `org_slug`): DECIDED
-      2026-07-25 (design locked). Server-side dependency SHIPPED 2026-07-25 (`GET /api/v1/whoami`
-      + shared-client `getIdentity`); CLI wiring remains.** The
+      2026-07-25 (design locked). Server `GET /api/v1/whoami` shipped, and the fob-stm CLI wiring
+      SHIPPED 2026-07-25 (`7151257`) — verified live, all 6 profiles resolved.** The
       profile name (`alex`) is a local alias; the `api_key` actually authenticates as a specific org
       (slug `alex`, id `P8nxj0gb9hlF`) that only the server knows. Fetch that identity and store it
       as **non-secret metadata** so the config is self-describing and `config profiles list` shows
@@ -203,8 +202,8 @@ The one architectural constraint to honor from day one: **keep secret storage be
       shape + blanket-`profiles`-with-domain-alias rule (E); README index + checklist. [eng-std `5c447d8`]
 - [x] Apply to `fob-stm` (E): `config profiles`/`orgs` command surface + `list` table/footer +
       `listProfiles()`/`configPath()`. [`007b2aa`]
-- [ ] Apply to `fob-stm` (G, blocked on `whoami`): org-identity caching + `profiles refresh <name>` /
-      `refresh --all`; forward-compat list columns already in place.
+- [x] Apply to `fob-stm` (G): org-identity caching (`getIdentity`/`setProfileIdentity`),
+      `profiles add` resolve-on-add, `profiles refresh <name>`/`--all`, enriched `list`. [`7151257`]
 - [ ] Small wins: `config profiles current`; pre-split secret/metadata in the data model (A's enabler).
 - [x] **Cross-repo dependency (G): DONE 2026-07-25.** `GET /api/v1/whoami` → `{ org_id, org_slug,
       org_name }` shipped in the statements app; `getIdentity(credentials)` added to the shared
