@@ -51,7 +51,7 @@ Precedence: `--org` flag → `FOB_STM_API_*` env (all three set) → current org
 
 CLI at parity; client core complete. Remaining Phase 3 work: first-run config migration from
 `~/.fobs`, migrating worker consumers off `@fob/lib-worker-statements`, and deprecating it. See
-`engineering-standards/docs/wip/cli-standards-and-wrappers.md`.
+`docs/wip/cli-standards-and-wrappers.md` (this repo).
 
 ## Test
 

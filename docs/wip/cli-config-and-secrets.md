@@ -232,7 +232,7 @@ The one architectural constraint to honor from day one: **keep secret storage be
 - [cli-industry-research/](./cli-industry-research/README.md) — the six dimension notes + tool matrix
 - [engineering-standards: cli/auth-patterns.md](/Users/alex/ec2code/alex/engineering-standards/cli/auth-patterns.md) — current standard to refine
 - [engineering-standards: cli/project-structure.md](/Users/alex/ec2code/alex/engineering-standards/cli/project-structure.md) — the `config.js` credential-source layer
-- [engineering-standards WIP: cli-standards-and-wrappers.md](/Users/alex/ec2code/alex/engineering-standards/docs/wip/cli-standards-and-wrappers.md) — parent family effort (Phase 3 = fob-stm)
+- [parent WIP: cli-standards-and-wrappers.md](./cli-standards-and-wrappers.md) — parent family effort (Phase 3 = fob-stm)
 - [engineering-standards: cli/config-and-secrets.md](/Users/alex/ec2code/alex/engineering-standards/cli/config-and-secrets.md) — the standard these decisions graduated into
 - `finopsbricks/lib/lib-email/docs/wip/cli-config-and-secrets.md` — sibling WIP applying this standard to fob-email
 - `src/config.js` — credential store (plaintext `0600`, org model)
