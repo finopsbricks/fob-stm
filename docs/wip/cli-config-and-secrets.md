@@ -1,6 +1,6 @@
 # CLI Config & Secrets — Standard for the `fob-<tool>` Family
 
-## Status: IN PROGRESS (~55%)
+## Status: IN PROGRESS (~65%)
 
 Decide how `fob-stm` (and every future `fob-<tool>`) stores config, models multiple accounts, and
 manages secrets — grounded in a survey of 14 mature CLIs. Goal: a **simple, secure-enough baseline**
@@ -188,14 +188,11 @@ The one architectural constraint to honor from day one: **keep secret storage be
 - [ ] Resolve Open Questions A–D into locked decisions (record each in this doc).
 - [ ] Confirm the layered roadmap and the `config.js` seam constraint.
 
-### Phase 3: Baseline standard + fob-stm implementation ❌
-- [ ] Refine
-      [engineering-standards: cli/auth-patterns.md](/Users/alex/ec2code/alex/engineering-standards/cli/auth-patterns.md)
-      (and/or add `cli/config-and-secrets.md`) with the decided storage baseline + the documented
-      upgrade path (A, B).
-- [ ] Refine
-      [engineering-standards: cli/command-grammar.md](/Users/alex/ec2code/alex/engineering-standards/cli/command-grammar.md)
-      with the `config <entity> <verb>` shape + blanket-`profiles`-with-domain-alias rule (E).
+### Phase 3: Baseline standard + fob-stm implementation 🔄
+- [x] Added `engineering-standards/cli/config-and-secrets.md` (A, B, F, G) + updated
+      `cli/auth-patterns.md` (config path + precedence + cross-link). [eng-std `5c447d8`]
+- [x] Updated `engineering-standards/cli/command-grammar.md` with the `config <entity> <verb>`
+      shape + blanket-`profiles`-with-domain-alias rule (E); README index + checklist. [eng-std `5c447d8`]
 - [x] Apply to `fob-stm` (E): `config profiles`/`orgs` command surface + `list` table/footer +
       `listProfiles()`/`configPath()`. [`007b2aa`]
 - [ ] Apply to `fob-stm` (G, blocked on `whoami`): org-identity caching + `profiles refresh <name>` /
@@ -216,6 +213,8 @@ The one architectural constraint to honor from day one: **keep secret storage be
 - [engineering-standards: cli/auth-patterns.md](/Users/alex/ec2code/alex/engineering-standards/cli/auth-patterns.md) — current standard to refine
 - [engineering-standards: cli/project-structure.md](/Users/alex/ec2code/alex/engineering-standards/cli/project-structure.md) — the `config.js` credential-source layer
 - [engineering-standards WIP: cli-standards-and-wrappers.md](/Users/alex/ec2code/alex/engineering-standards/docs/wip/cli-standards-and-wrappers.md) — parent family effort (Phase 3 = fob-stm)
+- [engineering-standards: cli/config-and-secrets.md](/Users/alex/ec2code/alex/engineering-standards/cli/config-and-secrets.md) — the standard these decisions graduated into
+- `finopsbricks/lib/lib-email/docs/wip/cli-config-and-secrets.md` — sibling WIP applying this standard to fob-email
 - `src/config.js` — credential store (plaintext `0600`, org model)
 - `src/cli/config/` + `src/cli/index.js` — the `config profiles`/`orgs` command surface (E, done)
 
