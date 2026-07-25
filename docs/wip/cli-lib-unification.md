@@ -182,13 +182,20 @@ Rewrote all 16 files onto `fobStm` (worker-sarveda ×3, worker-alex ×13). **Cle
   `apiPost('/api/v1/transactions/search', …)`; rule-link builders read origin-only `FOB_STM_API_URL`.
 - All files syntax-clean; no `@fob/lib-worker-statements` / `FOB_STATEMENTS_` left.
 
-**BLOCKERS before this runs (cannot be done/tested from here):**
-- [ ] **Publish `@fob/stm` to GitHub** (`cli/fob-stm` → a repo + tag). The worker `package.json` dep
-      `github:finopsbricks/fob-stm#v0.1.0` is a **guess** — confirm repo/tag, then `npm install` in both workers.
-- [ ] **Rename deploy secrets** `FOB_STATEMENTS_API_*` → `FOB_STM_API_*` (origin-only URL, no `/api/v1`),
-      including the per-org `FOB_STM_API_*_<ORG>` for the AV line.
-- [ ] **Smoke-run** one step per worker once installed (esp. AV multi-org + P3 search).
-- [ ] Worker-repo commits are **held** pending the above (untested against an unpublished dep).
+**Publish + push (done):**
+- [x] **Published `@fob/stm`** — `github.com/finopsbricks/fob-stm` (private), release **`v0.1.0`**
+      (tag `b05f159`). Worker deps confirmed at `github:finopsbricks/fob-stm#v0.1.0`.
+- [x] **Pushed all three repos in sequence**: fob-stm (+release), worker-alex (`0bfdb2e`),
+      worker-sarveda (`ec8cb1b`). Committed only the migration files (excluded each repo's unrelated
+      pre-existing changes).
+- [x] **Validated the chain**: `npm install` in both workers resolves `@fob/stm#v0.1.0` from GitHub;
+      all 16 migrated step files import cleanly. Lockfiles updated + committed.
+
+**Remaining (ops / needs real data — cannot be done from here):**
+- [ ] **Rename deploy secrets** `FOB_STATEMENTS_API_*` → `FOB_STM_API_*` (origin-only URL, no
+      `/api/v1`), including per-org `FOB_STM_API_*_<ORG>` for the AV line, before the next deploy.
+- [ ] **Live smoke-run** one step per worker against real creds (esp. AV multi-org + P3 search) —
+      import resolves, but end-to-end behavior against the API is unverified.
 
 ## Related Files
 
