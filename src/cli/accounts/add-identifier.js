@@ -1,17 +1,16 @@
-import { apiPost } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 
 export async function addIdentifierHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id, value } = argv;
-  const result = await apiPost(`/api/v1/accounts/${encodeURIComponent(id)}/identifiers`, { value }, { credentials: creds });
+  const account = await stm.accounts.addIdentifier(id, value);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(account, null, 2));
     return;
   }
 
-  const identifier = result?.data?.identifier ?? [];
+  const identifier = account?.identifier ?? [];
   console.log(`Added identifier '${value}' to account ${id}.`);
   console.log(`  identifiers: ${identifier.join(', ') || '(none)'}`);
 }

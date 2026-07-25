@@ -3,6 +3,7 @@
  */
 
 import { resolveCredentials } from '../config.js';
+import { fobStm } from '../index.js';
 
 /**
  * Wrap a handler so unexpected exceptions exit cleanly without a stack trace.
@@ -54,4 +55,13 @@ export function requireCreds() {
     hintPrinted = true;
   }
   return creds;
+}
+
+/**
+ * Build a credential-bound `fobStm` client for the current command — the same
+ * client workers construct, so a handler exercises the exact library path.
+ * Prints the one-time credential-source hint via requireCreds().
+ */
+export function clientFor() {
+  return fobStm(requireCreds());
 }

@@ -1,9 +1,8 @@
-import { apiPut } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 import { formatCurrency } from '../../utils/format.js';
 
 export async function updateAccountHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const body = {};
   if (argv.name !== undefined) body.name = argv.name;
   if (argv.category !== undefined) body.category = argv.category;
@@ -20,14 +19,13 @@ export async function updateAccountHandler(argv) {
     );
   }
 
-  const result = await apiPut(`/api/v1/accounts/${encodeURIComponent(argv.id)}`, body, { credentials: creds });
+  const a = (await stm.accounts.update(argv.id, body)) ?? {};
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(a, null, 2));
     return;
   }
 
-  const a = result?.data ?? {};
   console.log(`Updated account ${a.id}: ${a.name}`);
   console.log(
     `  category: ${a.category ?? '—'}   currency: ${a.currency ?? '—'}   upload_frequency: ${a.upload_frequency}`,

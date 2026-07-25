@@ -1,17 +1,15 @@
 import { jest } from '@jest/globals';
 import { captureOutput } from '../../helpers.js';
 
-// Mock the transport (no network) and the config store (no filesystem).
-jest.unstable_mockModule('../../../src/http.js', () => ({
-  apiGet: jest.fn(),
-  apiGetAll: jest.fn(),
+// The CLI handler is presentation-only now, so mock the client namespace it
+// drives (via clientFor) rather than the transport. This is the payoff of the
+// resource-layer split: CLI tests assert rendering, not HTTP.
+const accounts = { list: jest.fn(), getAll: jest.fn() };
+jest.unstable_mockModule('../../../src/cli/_helpers.js', () => ({
+  clientFor: jest.fn(() => ({ accounts })),
 }));
-jest.unstable_mockModule('../../../src/config.js', () => ({
-  resolveCredentials: jest.fn(() => ({ api_url: 'https://x/', api_key: 'k', api_secret: 's', source: 'env' })),
-  setOrgOverride: jest.fn(),
-}));
+jest.unstable_mockModule('../../../src/http.js', () => ({ MAX_ALL_ROWS: 15000 }));
 
-const { apiGet, apiGetAll } = await import('../../../src/http.js');
 const { listAccountsHandler } = await import('../../../src/cli/accounts/list.js');
 
 describe('listAccountsHandler', () => {
@@ -22,34 +20,30 @@ describe('listAccountsHandler', () => {
   });
   afterEach(() => out.restore());
 
-  it('renders a table and calls apiGet with paging, filters, and threaded credentials', async () => {
-    apiGet.mockResolvedValue({
+  it('renders a table via accounts.list with paging + filters', async () => {
+    accounts.list.mockResolvedValue({
       data: [{ id: '1', name: 'Acme Bank', category: 'bank', acc_no: '001', currency: 'INR', status: 'active' }],
       page_context: { has_more: false },
     });
 
     await listAccountsHandler({ page: 1, limit: 100, category: 'bank' });
 
-    expect(apiGet).toHaveBeenCalledWith(
-      '/api/v1/accounts',
-      expect.objectContaining({
-        searchParams: expect.objectContaining({ page: 1, limit: 100, category: 'bank' }),
-        credentials: expect.objectContaining({ api_key: 'k' }),
-      }),
+    expect(accounts.list).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, limit: 100, category: 'bank' }),
     );
     expect(out.stdout).toContain('Acme Bank');
   });
 
-  it('prints (no accounts) when the result is empty', async () => {
-    apiGet.mockResolvedValue({ data: [], page_context: {} });
+  it('prints (no accounts) when the page is empty', async () => {
+    accounts.list.mockResolvedValue({ data: [], page_context: {} });
     await listAccountsHandler({ page: 1, limit: 100 });
     expect(out.stdout).toContain('(no accounts)');
   });
 
-  it('uses the auto-paginating apiGetAll for --json', async () => {
-    apiGetAll.mockResolvedValue({ data: [{ id: '1', name: 'Acme' }], page_context: {}, truncated: false });
+  it('uses the auto-paginating accounts.getAll for --json', async () => {
+    accounts.getAll.mockResolvedValue([{ id: '1', name: 'Acme' }]);
     await listAccountsHandler({ json: true });
-    expect(apiGetAll).toHaveBeenCalled();
+    expect(accounts.getAll).toHaveBeenCalled();
     expect(out.stdout).toContain('"name": "Acme"');
   });
 });

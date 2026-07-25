@@ -1,13 +1,12 @@
-import { apiPut } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 
 async function setStatus(argv, status, verb) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id } = argv;
-  const result = await apiPut(`/api/v1/accounts/${encodeURIComponent(id)}`, { status }, { credentials: creds });
+  const record = await stm.accounts.setStatus(id, status);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(record, null, 2));
     return;
   }
 

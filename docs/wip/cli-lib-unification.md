@@ -64,22 +64,30 @@ Decisions locked in during brainstorming (2026-07-25):
    | collection (one page) | `list` | `{ data, page_context }` (CLI needs the meta) |
    | collection (all) | `getAll` | a flat array (auto-paginated) |
 
-4. **Folder-per-resource, mirroring `src/cli/`** (chosen over one-file-per-resource). Each action is
-   its own file, symmetric with the CLI tree:
+4. **One file per resource** (revised 2026-07-25 during the accounts review — reverses the earlier
+   folder-per-resource pick). Methods are thin one-line wrappers, so a folder of ~15 single-line
+   files was more ceremony than the code earns. Each resource is one file exporting `buildX(ctx)`:
    ```
-   src/resources/accounts/{list,get,get-all,create,update,delete,balance,status,merge,
-                           add-identifier,remove-identifier,recalculate-opening-balance}.js
-   src/resources/accounts/index.js          # buildAccounts(ctx) → the namespace
+   src/resources/accounts.js     # buildAccounts(ctx) → the whole namespace
+   src/resources/statements.js
    ```
+   **Paths are inlined literally** (no `_base.js`/`ROOT` constant): endpoints rarely change, the
+   literal reads clearer at the call site, and find-and-replace within one file is trivial —
+   avoiding a premature abstraction. One tiny local `unwrap = (r) => r?.data ?? null` helper de-noises
+   the repeated single-record unwrap.
 
 5. **Bound-transport (`ctx`) pattern threads creds exactly once.** The factory builds a `ctx`
-   (`http.js`'s `apiGet`/`apiPost`/… with creds closed over) and passes it to each `buildX(ctx)`.
-   Action files are pure `(ctx, ...args)` functions — creds-free, testable with a fake `ctx`.
+   (`http.js`'s `apiGet`/`apiPost`/… with creds closed over) and hands it to each `buildX(ctx)`, which
+   returns a flat object of `ctx`-closured methods — creds-free, no path knowledge outside the file.
    ```js
-   // src/resources/accounts/get.js
-   export const get = (ctx, id) => ctx.get(`/api/v1/accounts/${encodeURIComponent(id)}`).then(r => r?.data ?? null);
-   // src/resources/accounts/index.js
-   export const buildAccounts = (ctx) => ({ get: (id) => get(ctx, id), list: (p) => list(ctx, p), /* … */ });
+   // src/resources/accounts.js
+   export function buildAccounts(ctx) {
+     return {
+       get: (id) => ctx.get(`/api/v1/accounts/${encodeURIComponent(id)}`).then(unwrap),
+       list: (params = {}) => ctx.get('/api/v1/accounts', { searchParams: params }),
+       // …
+     };
+   }
    ```
 
 6. **CLI handlers become presentation-only.** They (a) map `argv` → a clean domain object (flag
@@ -107,28 +115,49 @@ Decisions locked in during brainstorming (2026-07-25):
 
 ## Implementation Phases
 
-### Phase 1: Transport factory (the `ctx` seam) ❌
-- [ ] Add `createTransport(credentials)` to `src/http.js` → `{ get, post, put, patch, delete, getAll,
+### Phase 1: Transport factory (the `ctx` seam) ✅
+- [x] Added `createTransport(credentials)` to `src/http.js` → `{ get, post, put, patch, delete, getAll,
       postForm, getStream, buildUrl }`, each pre-applying `credentials` (undefined ⇒ env default).
-- [ ] Export a `MAX_ALL_ROWS` constant (the `apiGetAll` cap) for the CLI truncation heuristic.
+- [x] Exported a `MAX_ALL_ROWS` constant (the `apiGetAll` cap) for the CLI truncation heuristic.
 
-### Phase 2: Accounts vertical slice — REVIEW GATE ❌
+### Phase 2: Accounts vertical slice — REVIEW GATE ✅ (reviewed & extended)
 The reviewable prototype (one object, end to end) before fanning out.
-- [ ] `src/resources/accounts/*` — one file per action + `index.js` `buildAccounts(ctx)`, faithfully
-      porting the endpoints currently inlined in `src/cli/accounts/*` (status/merge/identifier/
-      recalculate paths lifted from those handlers).
-- [ ] `fobStm(creds)` factory in `src/index.js` exposing `accounts` (+ `whoami`); `clientFor(argv)`
-      helper in `src/cli/_helpers.js`.
-- [ ] Refactor `src/cli/accounts/*` to presentation-only: argv→domain mapping + `stm.accounts.*` +
-      rendering. Remove all inline `apiX`/path usage.
-- [ ] Tests: data-layer test for `resources/accounts` (mock `fetch`); reshape
-      `tests/cli/accounts/list.test.js` to mock the `accounts` namespace instead of the transport.
-- [ ] **REVIEW** the pattern before Phase 3.
+- [x] `src/resources/accounts.js` — one file, `buildAccounts(ctx)` with the whole namespace (list,
+      getAll, get, balance, create, update, setStatus/retire/quarantine/reactivate, delete, merge,
+      add/removeIdentifier, recalculateOpeningBalance). Paths inlined; endpoints ported faithfully
+      from `src/cli/accounts/*`. (Consolidated from the initial per-action folder during review.)
+- [x] `fobStm(creds)` factory in `src/index.js` exposing `accounts` (+ root `whoami`); `clientFor()`
+      helper in `src/cli/_helpers.js`. Transport primitives kept as an escape hatch.
+- [x] Refactored all 12 `src/cli/accounts/*` handlers to presentation-only (argv→domain mapping +
+      `stm.accounts.*` + rendering). No handler holds a path or calls `apiX` anymore.
+- [x] Tests: `tests/resources/accounts.test.js` (mock `fetch`, 7 cases); reshaped
+      `tests/cli/accounts/list.test.js` to mock the `accounts` namespace. Suite 19/19 green. CLI
+      help tree walks; no-creds → clean exit 1.
+- [x] **Type-checking + written types (per `engineering-standards` jsdoc notes)**: `jsconfig.json`
+      (gradual `checkJs:false`, aligned to the statements app's config), `typecheck` script,
+      `typescript` + `@types/node` devDeps. Written types in `src/types/` — `general/` (Credentials,
+      Transport plumbing, barrel) and `api/` (Account/AccountBalance response shapes; **`api/` not
+      `database/`** — this is an API wrapper, not an app). Client-surface types (`AccountsApi`,
+      `StmClient`) co-located with explicit `@returns`. `@ts-check` on the service layer **and**
+      `show.js` (proof handler). `npm run typecheck` → 0 errors; tests 19/19.
+- [x] **REVIEWED.** Key finding: in `checkJs`, inferred object literals are *expando* (unknown-prop
+      access doesn't error) — only **declared** typedefs get real checking. Hence written `AccountsApi`
+      + `@returns`, which also makes `tsc` verify the impl matches the type (drift caught). Proven:
+      bad method call, bad record field, and impl/type drift all error.
 
-### Phase 3: Fan out remaining resources ❌
-Same pattern for: statements, transactions, rules, reports, categories, entities, work-records,
-checks, identity. Each: `resources/<r>/*` + `buildX(ctx)` wired into `fobStm`, then refactor the
-matching `src/cli/<r>/*` handlers to presentation-only, with tests.
+### Phase 3: Fan out remaining resources 🔄
+Same pattern for: statements, transactions, rules, reports, categories, entities. (Lib-only, no CLI:
+work-records, checks — add to `fobStm` for worker parity.) The per-resource recipe:
+1. `src/types/api/<R>.types.js` — response shapes (record/list rows), `export {}`.
+2. `src/resources/<r>.js` — `@ts-check`; `<R>Api` typedef (co-located) + `buildX(ctx)` with
+   `@returns {<R>Api}`; inline paths; `unwrap` for single-record ops; category-based returns.
+3. Wire `<r>: buildX(ctx)` into `fobStm` (`src/index.js`) + add to the `StmClient` typedef.
+4. Refactor `src/cli/<r>/*` handlers → presentation-only (`clientFor()` + `stm.<r>.*` + render),
+   add `@ts-check`, preserving exact output/error strings.
+5. `npm run typecheck` (0 errors — the `@returns` verifies impl vs type) + tests + CLI smoke.
+
+- [ ] transactions   - [ ] categories   - [ ] entities   - [ ] reports   - [ ] rules   - [ ] statements
+- [ ] work-records + checks (lib-only namespaces)
 
 ### Phase 4: Retire the old library shape ❌
 - [ ] Delete `src/client.js`; `src/index.js` exports `fobStm` + (decided) transport primitives.

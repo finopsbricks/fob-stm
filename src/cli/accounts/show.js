@@ -1,18 +1,17 @@
-import { apiGet } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+// @ts-check
+import { clientFor } from '../_helpers.js';
 import { formatField, formatDate, formatCurrency } from '../../utils/format.js';
 
 export async function showAccountHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id } = argv;
-  const result = await apiGet(`/api/v1/accounts/${encodeURIComponent(id)}`, { credentials: creds });
+  const acct = await stm.accounts.get(id);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(acct, null, 2));
     return;
   }
 
-  const acct = result?.data;
   if (!acct) {
     console.error(`No account found for id: ${id}`);
     process.exit(1);

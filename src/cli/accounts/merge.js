@@ -1,20 +1,18 @@
 import { confirm } from '@inquirer/prompts';
-import { apiGet, apiPost, ApiError } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { ApiError } from '../../http.js';
+import { clientFor } from '../_helpers.js';
 
 export async function mergeAccountsHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { retainId, deleteId } = argv;
 
   let retain_account = null;
   let delete_account = null;
   try {
-    const [retain_result, delete_result] = await Promise.all([
-      apiGet(`/api/v1/accounts/${encodeURIComponent(retainId)}`, { credentials: creds }),
-      apiGet(`/api/v1/accounts/${encodeURIComponent(deleteId)}`, { credentials: creds }),
+    [retain_account, delete_account] = await Promise.all([
+      stm.accounts.get(retainId),
+      stm.accounts.get(deleteId),
     ]);
-    retain_account = retain_result?.data;
-    delete_account = delete_result?.data;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       console.error(err.message);
@@ -24,15 +22,15 @@ export async function mergeAccountsHandler(argv) {
   }
 
   if (!argv.yes) {
-    console.log(`Retain:  ${retain_account.name ?? retainId} (${retainId})`);
-    console.log(`Delete:  ${delete_account.name ?? deleteId} (${deleteId})`);
+    console.log(`Retain:  ${retain_account?.name ?? retainId} (${retainId})`);
+    console.log(`Delete:  ${delete_account?.name ?? deleteId} (${deleteId})`);
     console.log(
       'This will permanently delete all transactions on the account being merged away, ' +
         're-process its statements onto the retained account, and then delete the account itself. ' +
         'This cannot be undone.',
     );
     const ok = await confirm({
-      message: `Merge '${delete_account.name ?? deleteId}' into '${retain_account.name ?? retainId}'?`,
+      message: `Merge '${delete_account?.name ?? deleteId}' into '${retain_account?.name ?? retainId}'?`,
       default: false,
     });
     if (!ok) {
@@ -41,17 +39,13 @@ export async function mergeAccountsHandler(argv) {
     }
   }
 
-  const result = await apiPost(`/api/v1/accounts/${encodeURIComponent(retainId)}/merge`, {
-    delete_account_id: deleteId,
-    confirm: true,
-  }, { credentials: creds });
+  const summary = (await stm.accounts.merge(retainId, deleteId)) ?? {};
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(summary, null, 2));
     return;
   }
 
-  const summary = result?.data ?? {};
   console.log(`Merged ${deleteId} into ${retainId}.`);
   console.log(`  transactions deleted:  ${summary.transactions_deleted}`);
   console.log(`  statements requeued:   ${summary.statements_requeued}`);

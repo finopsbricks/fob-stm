@@ -1,5 +1,4 @@
-import { apiGet } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 
 function todayLocal() {
   const d = new Date();
@@ -20,7 +19,7 @@ function formatAmount(value) {
 }
 
 export async function balanceAccountHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id } = argv;
   const date = argv['yyyy-mm-dd'] || todayLocal();
 
@@ -28,12 +27,7 @@ export async function balanceAccountHandler(argv) {
     throw new Error(`date must be in YYYY-MM-DD format, got: ${date}`);
   }
 
-  const result = await apiGet(
-    `/api/v1/accounts/${encodeURIComponent(id)}/balance`,
-    { searchParams: { as_of: date }, credentials: creds },
-  );
-
-  const body = result?.data;
+  const body = await stm.accounts.balance(id, date);
   if (!body) {
     throw new Error(`Unexpected response shape for account ${id}`);
   }

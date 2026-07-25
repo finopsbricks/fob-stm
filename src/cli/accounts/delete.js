@@ -1,15 +1,14 @@
 import { confirm } from '@inquirer/prompts';
-import { apiGet, apiDelete, ApiError } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { ApiError } from '../../http.js';
+import { clientFor } from '../_helpers.js';
 
 export async function deleteAccountHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id } = argv;
 
   let account = null;
   try {
-    const result = await apiGet(`/api/v1/accounts/${encodeURIComponent(id)}`, { credentials: creds });
-    account = result?.data;
+    account = await stm.accounts.get(id);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       console.error(`No account found for id: ${id}`);
@@ -19,8 +18,8 @@ export async function deleteAccountHandler(argv) {
   }
 
   if (!argv.yes) {
-    console.log(`Account:  ${account.name ?? id}`);
-    if (account.category) console.log(`Category: ${account.category}`);
+    console.log(`Account:  ${account?.name ?? id}`);
+    if (account?.category) console.log(`Category: ${account.category}`);
     const ok = await confirm({
       message: `Permanently delete account ${id}? (Use 'archive' instead to keep history.)`,
       default: false,
@@ -32,7 +31,7 @@ export async function deleteAccountHandler(argv) {
   }
 
   try {
-    await apiDelete(`/api/v1/accounts/${encodeURIComponent(id)}`, { credentials: creds });
+    await stm.accounts.delete(id);
   } catch (err) {
     if (err instanceof ApiError && err.code === 'HAS_LINKED_TRANSACTIONS') {
       console.error(`${err.message}`);

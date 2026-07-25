@@ -1,6 +1,6 @@
 import { writeFileSync } from 'fs';
-import { apiGet, apiGetAll } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { MAX_ALL_ROWS } from '../../http.js';
+import { clientFor } from '../_helpers.js';
 import {
   formatTable,
   formatPaginationHint,
@@ -85,27 +85,25 @@ function renderTotals(totals, truncated) {
 }
 
 export async function listAccountsHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
   const needsAllRows = format === 'csv' || format === 'json' || argv.totals;
 
   if (needsAllRows) {
-    const result = await apiGetAll('/api/v1/accounts', {
-      searchParams: buildSearchParams(argv),
-      credentials: creds,
-    });
-    const totals = argv.totals ? computeTotals(result.data) : null;
+    const accounts = await stm.accounts.getAll(buildSearchParams(argv));
+    // getAll returns a plain array; hitting the cap is the truncation signal.
+    const truncated = accounts.length >= MAX_ALL_ROWS;
+    const totals = argv.totals ? computeTotals(accounts) : null;
 
     if (format === 'json') {
-      const payload = { data: result.data, page_context: result.page_context };
+      const payload = { data: accounts };
       if (totals) payload.totals = totals;
       emit(JSON.stringify(payload, null, 2), argv.output);
     } else if (format === 'csv') {
-      emit(formatCsv(fields, selector.rawRows(result.data, fields)), argv.output);
-      if (totals) console.error(renderTotals(totals, result.truncated));
+      emit(formatCsv(fields, selector.rawRows(accounts, fields)), argv.output);
+      if (totals) console.error(renderTotals(totals, truncated));
     } else {
-      const accounts = result.data;
       if (accounts.length === 0) {
         console.log('(no accounts)');
       } else {
@@ -118,26 +116,23 @@ export async function listAccountsHandler(argv) {
         );
         if (accounts.length > slice.length) {
           console.log(
-            `\n(showing ${slice.length} of ${accounts.length}${result.truncated ? '+ (truncated)' : ''}; use --page ${(argv.page ?? 1) + 1} for more)`,
+            `\n(showing ${slice.length} of ${accounts.length}${truncated ? '+ (truncated)' : ''}; use --page ${(argv.page ?? 1) + 1} for more)`,
           );
         }
       }
-      if (totals) console.log(renderTotals(totals, result.truncated));
+      if (totals) console.log(renderTotals(totals, truncated));
     }
 
-    if (result.truncated && format !== 'table') {
-      console.error('(truncated to first 15000 rows — refine filters to narrow the result set)');
+    if (truncated && format !== 'table') {
+      console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
     }
     return;
   }
 
-  const result = await apiGet('/api/v1/accounts', {
-    searchParams: {
-      page: argv.page,
-      limit: argv.limit,
-      ...buildSearchParams(argv),
-    },
-    credentials: creds,
+  const result = await stm.accounts.list({
+    page: argv.page,
+    limit: argv.limit,
+    ...buildSearchParams(argv),
   });
 
   const accounts = result?.data ?? [];
