@@ -4,6 +4,7 @@ import { listConfigHandler } from './list.js';
 import { useConfigHandler } from './use.js';
 import { removeConfigHandler } from './remove.js';
 import { refreshConfigHandler } from './refresh.js';
+import { currentConfigHandler } from './current.js';
 
 /**
  * The multi-tenant object is a "profile" — a named set of credentials. fob-stm's
@@ -18,6 +19,12 @@ function buildProfilesSubcommands(yargs) {
       'List profiles (current marked with *)',
       (y) => y.option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(listConfigHandler),
+    )
+    .command(
+      ['current', 'whoami'],
+      'Show the active profile + resolution source',
+      (y) => y.option('json', { describe: 'Output raw JSON', type: 'boolean' }),
+      safe(currentConfigHandler),
     )
     .command(
       'add <name>',
@@ -51,7 +58,7 @@ function buildProfilesSubcommands(yargs) {
           .option('all', { describe: 'Refresh every profile', type: 'boolean' }),
       safe(refreshConfigHandler),
     )
-    .demandCommand(1, 'Specify an action: list, add, use, remove, refresh');
+    .demandCommand(1, 'Specify an action: list, current, add, use, remove, refresh');
 }
 
 export function buildConfigSubcommands(yargs) {

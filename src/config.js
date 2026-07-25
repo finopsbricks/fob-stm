@@ -123,7 +123,7 @@ export function resolveCredentials() {
   if (orgOverride) {
     const org = cfg.orgs[orgOverride];
     if (!org) throw new Error(`Profile '${orgOverride}' is not configured. Run \`fob-stm config profiles add ${orgOverride}\`.`);
-    return { ...org, source: `org '${orgOverride}'` };
+    return { ...org, name: orgOverride, source: `profile '${orgOverride}'` };
   }
 
   const { FOB_STM_API_URL, FOB_STM_API_KEY, FOB_STM_API_SECRET } = process.env;
@@ -132,15 +132,33 @@ export function resolveCredentials() {
       api_url: FOB_STM_API_URL,
       api_key: FOB_STM_API_KEY,
       api_secret: FOB_STM_API_SECRET,
+      name: null,
       source: 'env',
     };
   }
 
   if (cfg.current_org && cfg.orgs[cfg.current_org]) {
-    return { ...cfg.orgs[cfg.current_org], source: `org '${cfg.current_org}'` };
+    return { ...cfg.orgs[cfg.current_org], name: cfg.current_org, source: `profile '${cfg.current_org}'` };
   }
 
   throw new Error(
     "No statements credentials. Run `fob-stm config profiles add <name>`, or set FOB_STM_API_URL/API_KEY/API_SECRET.",
   );
+}
+
+/**
+ * Non-secret description of the identity the CLI would use right now — the same
+ * flag > env > current-profile resolution as resolveCredentials(), minus the
+ * secrets. Returns null when nothing is configured. Powers `profiles current`.
+ * @returns {{ api_url: string, source: string, name: string|null, org_id?: string, org_slug?: string, org_name?: string }|null}
+ */
+export function describeCurrent() {
+  let creds;
+  try {
+    creds = resolveCredentials();
+  } catch {
+    return null;
+  }
+  const { api_key, api_secret, ...rest } = creds;
+  return rest;
 }

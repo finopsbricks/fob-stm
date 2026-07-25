@@ -9,7 +9,7 @@ process.env.FOB_STM_CONFIG_DIR = dir;
 
 const {
   addOrg, removeOrg, useOrg, listOrgs, listProfiles, configPath,
-  getProfileCredentials, setProfileIdentity,
+  getProfileCredentials, setProfileIdentity, describeCurrent,
   loadConfig, resolveCredentials, setOrgOverride,
 } = await import('../src/config.js');
 
@@ -58,12 +58,19 @@ describe('config store (~/.fob/fob-stm/config.yml)', () => {
   });
 
   it('resolves credentials for the current org', () => {
-    expect(resolveCredentials()).toMatchObject({ api_key: 'k_acme', source: "org 'acme'" });
+    expect(resolveCredentials()).toMatchObject({ api_key: 'k_acme', source: "profile 'acme'" });
+  });
+
+  it('describeCurrent reports the active profile + source, without secrets', () => {
+    const cur = describeCurrent();
+    expect(cur).toMatchObject({ source: "profile 'acme'", name: 'acme', api_url: 'https://acme.example/' });
+    expect(cur).not.toHaveProperty('api_key');
+    expect(cur).not.toHaveProperty('api_secret');
   });
 
   it('honors the --org override, then env, over the current org', () => {
     setOrgOverride('other');
-    expect(resolveCredentials()).toMatchObject({ api_key: 'k_other', source: "org 'other'" });
+    expect(resolveCredentials()).toMatchObject({ api_key: 'k_other', source: "profile 'other'" });
     setOrgOverride(null);
 
     process.env.FOB_STM_API_URL = 'https://env.example/';
