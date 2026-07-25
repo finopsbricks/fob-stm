@@ -12,7 +12,10 @@ gives a single `fob <tool> …` entry point without coupling the wrappers togeth
 ---
 
 > **Sub-efforts (sibling WIPs):**
-> - Config/secrets + profiles/identity model → `finopsbricks/cli/fob-stm/docs/wip/cli-config-and-secrets.md` (14-CLI survey; A/B/E/F/G decided, C parked, D partial).
+> - Config/secrets + profiles/identity model → **baseline DONE** (14-CLI survey; A/B/E/F/G/D all
+>   shipped, graduated into the standard). Deferred advanced-security layers tracked in
+>   `finopsbricks/cli/fob-stm/docs/wip/cli-secrets-advanced-layers.md` (Layer 2/3 keychain, token
+>   lifecycle C parked).
 > - fob-email retrofit → `finopsbricks/cli/fob-email/docs/wip/cli-config-and-secrets.md` (all phases done).
 
 ## Problem Statement
@@ -127,7 +130,8 @@ existing `architecture/`, `testing/` split).
       identity caching) + updated `command-grammar.md` (the `config <entity> <verb>` namespace +
       blanket-`profiles`/domain-alias rule) and `auth-patterns.md` (config path →
       `~/.fob/<tool>/`). [eng-std `5c447d8`] Grounded in a 14-CLI survey; the underlying decisions
-      are tracked in the sibling WIP `fob-stm/docs/wip/cli-config-and-secrets.md`.
+      shipped and graduated into the standard (deferred layers → sibling WIP
+      `fob-stm/docs/wip/cli-secrets-advanced-layers.md`).
 
 ### Phase 2: Audit existing CLIs against the standard ✅
 Audited all three against the 8-note standard (2026-07-25).
@@ -189,10 +193,20 @@ Extract the statements slice into a standalone 2-in-1 `@fob/stm` (client + `fob-
 - [x] **Org-identity caching (G)** — profiles cache the server-resolved `org_id`/`org_slug` via the
       statements app's new `GET /api/v1/whoami`; resolve-on-`add`, `config profiles refresh
       <name>`/`--all`, enriched `list`. Whoami endpoint + `getIdentity()` shipped in the statements
-      app and `@fob/lib-worker-statements`. [`7151257`] Detail: sibling WIP `cli-config-and-secrets.md`.
-- [ ] **CHECKPOINT (in progress): validate the CLI use case first.** `fob-stm` is `npm link`ed
-      alongside `fobs`; comparing `fob-stm <args>` vs `fobs stm <args>` before extending to the
-      library/worker use case. Library-superset work (below) is paused.
+      app and `@fob/lib-worker-statements`. [`7151257`] Detail: graduated into
+      `engineering-standards/cli/config-and-secrets.md`.
+- [x] **CHECKPOINT: CLI use case validated.** `fob-stm` was `npm link`ed alongside `fobs` and
+      `fob-stm <args>` compared against `fobs stm <args>`. CLI use case confirmed; library/worker
+      use case now unpaused.
+- [ ] **Library superset — build per object, review each (in progress).** Rather than one big
+      superset pass, reshape `client.js` one resource at a time into a drop-in over
+      `lib-worker-statements`. **`accounts` done + under review** [uncommitted]: `getAllAccounts`
+      now returns a flat array (was `{data,...}`); transport gained legacy `FOB_STATEMENTS_*` env
+      fallback + `/api/v1`-base tolerance (both additive, CLI untouched since handlers call the
+      transport directly). New `tests/lib/accounts.test.js` covers array-return, legacy env, URL
+      tolerance, override precedence. Remaining objects: statements (+`getAllStatementsForAccount`),
+      transactions (`getAllTransactions` → array, `(account_id, creds)` sig), checks (+`updateChecks`),
+      rules, work-records.
 - [ ] **Migrate worker consumers** via a compat shim (deferred until CLI validated + `fob-stm`
       published to GitHub). Plan: make `@fob/stm` a superset of `lib-worker-statements`
       (add `getAllStatementsForAccount`, `updateChecks`; `getAll*` return arrays; accept legacy
@@ -230,8 +244,9 @@ the fob-stm yargs skeleton. [`d867a87`] Own sibling WIP (all phases done).
 - `engineering-standards/principles/scripting/separate-presentation-from-logic.md` — linked principle
 
 **Sibling WIPs (sub-efforts):**
-- `finopsbricks/cli/fob-stm/docs/wip/cli-config-and-secrets.md` — config/secrets standard + 14-CLI
-  survey (A/B/E/F/G decided; C parked; D partial)
+- `finopsbricks/cli/fob-stm/docs/wip/cli-secrets-advanced-layers.md` — deferred advanced-security
+  layers (Layer 2/3 keychain, token lifecycle). Baseline config/secrets standard + 14-CLI survey is
+  DONE (A/B/E/F/G/D shipped, graduated into `engineering-standards/cli/config-and-secrets.md`)
 - `finopsbricks/cli/fob-email/docs/wip/cli-config-and-secrets.md` — applying it to fob-email (done)
 - `finopsbricks/apps/statements.finopsbricks.com/docs/wip/whoami-endpoint.md` — the
   `GET /api/v1/whoami` dependency (shipped)
