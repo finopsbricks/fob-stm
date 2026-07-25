@@ -113,8 +113,10 @@ export function setProfileIdentity(name, { org_id, org_slug, org_name } = {}) {
 }
 
 /**
- * Resolve credentials for the current command.
- * Precedence: `--profile` override > FOB_STM_API_* env (all three set) > config current_org.
+ * Resolve credentials for the current command from the config profiles.
+ * Precedence: `--profile`/`--org` override > config `current_org`. The CLI's
+ * credential model is profiles (config.yml); it does not read FOB_STM_API_* env
+ * — an env var that silently overrode the active profile would be a footgun.
  * @returns {{ api_url: string, api_key: string, api_secret: string, source: string }}
  */
 export function resolveCredentials() {
@@ -126,30 +128,19 @@ export function resolveCredentials() {
     return { ...org, name: orgOverride, source: `profile '${orgOverride}'` };
   }
 
-  const { FOB_STM_API_URL, FOB_STM_API_KEY, FOB_STM_API_SECRET } = process.env;
-  if (FOB_STM_API_URL && FOB_STM_API_KEY && FOB_STM_API_SECRET) {
-    return {
-      api_url: FOB_STM_API_URL,
-      api_key: FOB_STM_API_KEY,
-      api_secret: FOB_STM_API_SECRET,
-      name: null,
-      source: 'env',
-    };
-  }
-
   if (cfg.current_org && cfg.orgs[cfg.current_org]) {
     return { ...cfg.orgs[cfg.current_org], name: cfg.current_org, source: `profile '${cfg.current_org}'` };
   }
 
   throw new Error(
-    "No statements credentials. Run `fob-stm config profiles add <name>`, or set FOB_STM_API_URL/API_KEY/API_SECRET.",
+    "No statements profile selected. Run `fob-stm config profiles add <name>`, then `fob-stm config profiles use <name>` (or pass --profile <name>).",
   );
 }
 
 /**
  * Non-secret description of the identity the CLI would use right now — the same
- * flag > env > current-profile resolution as resolveCredentials(), minus the
- * secrets. Returns null when nothing is configured. Powers `profiles current`.
+ * flag > current-profile resolution as resolveCredentials(), minus the secrets.
+ * Returns null when nothing is configured. Powers `profiles current`.
  * @returns {{ api_url: string, source: string, name: string|null, org_id?: string, org_slug?: string, org_name?: string }|null}
  */
 export function describeCurrent() {

@@ -1,6 +1,6 @@
 {
   "name": "@fob/stm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Statements app client + fob-stm CLI (2-in-1). Import the client in workers, or use the CLI.",
   "type": "module",
   "main": "src/index.js",

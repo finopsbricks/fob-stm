@@ -5,7 +5,7 @@
  * Construct a client with credentials bound once, then call resource namespaces:
  *
  *   import { fobStm } from '@fob/stm';
- *   const stm = fobStm(credentials);        // omit → falls back to FOB_STM_API_* env
+ *   const stm = fobStm({ api_key, api_secret });   // api_url optional (defaults to the hosted origin)
  *   const { data } = await stm.accounts.list({ category: 'bank' });
  *   const acct = await stm.accounts.get(id);
  *
@@ -58,8 +58,9 @@ import { buildChecks } from './resources/checks.js';
  */
 
 /**
- * @param {Credentials} [credentials]
- *   Omit to use FOB_STM_API_URL/API_KEY/API_SECRET from the environment.
+ * @param {Credentials} credentials  Required: `{ api_key, api_secret }`. Optional
+ *   `api_url` (origin-only) overrides the default hosted endpoint. The library
+ *   never reads these from the environment — inject them explicitly.
  * @returns {StmClient}
  */
 export function fobStm(credentials) {

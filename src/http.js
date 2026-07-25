@@ -2,10 +2,10 @@
 /**
  * Statements API transport.
  *
- * PURE: credentials come from the `credentials` argument, falling back to
- * FOB_STM_API_* env vars. This module never reads the CLI config file — that
- * resolution lives in src/config.js (a CLI concern), which passes resolved
- * credentials in as `credentials`. This is the layer workers import.
+ * PURE: credentials come from the `credentials` argument only — this module
+ * never reads `process.env` or the CLI config file. Callers resolve creds their
+ * own way (the CLI from its config profiles, workers from their own env) and
+ * inject them. See engineering-standards `no-ambient-configuration`.
  *
  * Base URL is origin-only (e.g. https://statements.finopsbricks.com/); the
  * /api/v1 prefix is carried in the paths passed by the resource layer.
@@ -37,18 +37,25 @@ export class ApiError extends Error {
   }
 }
 
+/** Origin the client talks to when the caller doesn't supply `api_url`. */
+export const DEFAULT_API_URL = 'https://statements.finopsbricks.com';
+
 /**
- * @param {Credentials} [credentials]
+ * Resolve credentials from the explicit argument only — this module never reads
+ * `process.env` (see engineering-standards `no-ambient-configuration`). Callers
+ * pass `{ api_key, api_secret }` (required) and optionally `api_url` (defaults to
+ * the hosted origin).
+ * @param {Credentials} credentials
  * @returns {{ api_url: string, api_key: string, api_secret: string }}
  */
 function resolveCreds(credentials) {
-  const api_url = credentials?.api_url ?? process.env.FOB_STM_API_URL;
-  const api_key = credentials?.api_key ?? process.env.FOB_STM_API_KEY;
-  const api_secret = credentials?.api_secret ?? process.env.FOB_STM_API_SECRET;
-  if (!api_url || !api_key || !api_secret) {
+  const api_url = credentials?.api_url ?? DEFAULT_API_URL;
+  const api_key = credentials?.api_key;
+  const api_secret = credentials?.api_secret;
+  if (!api_key || !api_secret) {
     throw new ApiError(
-      'Missing statements credentials. Set FOB_STM_API_URL/API_KEY/API_SECRET, ' +
-        'or pass a credentials override, or configure the CLI with `fob-stm config add <org>`.',
+      'Missing statements credentials: pass { api_key, api_secret } to fobStm() ' +
+        `(api_url optional, defaults to ${DEFAULT_API_URL}).`,
       { code: 'NO_CREDENTIALS' },
     );
   }

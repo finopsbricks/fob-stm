@@ -1,10 +1,10 @@
 /**
- * Statements API credentials. Any field may be omitted — the transport falls
- * back to the matching FOB_STM_API_* env var.
+ * Statements API credentials, passed explicitly to `fobStm(...)`. The library
+ * never reads these from the environment — the caller injects them.
  * @typedef {Object} Credentials
- * @property {string} [api_url]    Origin-only base URL (no /api/v1).
- * @property {string} [api_key]
- * @property {string} [api_secret]
+ * @property {string} api_key
+ * @property {string} api_secret
+ * @property {string} [api_url]  Origin-only base URL (no /api/v1). Defaults to https://statements.finopsbricks.com.
  */
 
 /**

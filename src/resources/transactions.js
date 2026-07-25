@@ -25,6 +25,7 @@
  * @property {(params?: object) => Promise<{ data: Transaction[], page_context: object|null }>} list
  * @property {(params?: object) => Promise<Transaction[]>} getAll
  * @property {(id: string) => Promise<Transaction|null>} get
+ * @property {(criteria: object) => Promise<{ data: Transaction[], page_context: object|null }>} search
  * @property {(id: string, data: object) => Promise<Transaction|null>} update
  * @property {(id: string, data: object) => Promise<Transaction|null>} edit
  */
@@ -48,6 +49,9 @@ export function buildTransactions(ctx) {
 
     /** One transaction by id, or null if absent. */
     get: (id) => ctx.get(`/api/v1/transactions/${encodeURIComponent(id)}`).then(unwrap),
+
+    /** Query transactions by a conditions object (POST). Returns the `{ data, page_context }` envelope. */
+    search: (criteria) => ctx.post('/api/v1/transactions/search', criteria),
 
     /** Update editable transaction fields (PUT). Returns the updated record. */
     update: (id, data) => ctx.put(`/api/v1/transactions/${encodeURIComponent(id)}`, data).then(unwrap),

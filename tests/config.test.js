@@ -68,15 +68,18 @@ describe('config store (~/.fob/fob-stm/config.yml)', () => {
     expect(cur).not.toHaveProperty('api_secret');
   });
 
-  it('honors the --org override, then env, over the current org', () => {
+  it('honors the --org override over the current org', () => {
     setOrgOverride('other');
     expect(resolveCredentials()).toMatchObject({ api_key: 'k_other', source: "profile 'other'" });
     setOrgOverride(null);
+  });
 
+  it('ignores FOB_STM_API_* env — the CLI resolves from profiles only (no ambient config)', () => {
     process.env.FOB_STM_API_URL = 'https://env.example/';
     process.env.FOB_STM_API_KEY = 'k_env';
     process.env.FOB_STM_API_SECRET = 's_env';
-    expect(resolveCredentials()).toMatchObject({ api_key: 'k_env', source: 'env' });
+    // current_org is 'acme'; env must NOT override it.
+    expect(resolveCredentials()).toMatchObject({ api_key: 'k_acme', source: "profile 'acme'" });
     delete process.env.FOB_STM_API_URL;
     delete process.env.FOB_STM_API_KEY;
     delete process.env.FOB_STM_API_SECRET;
