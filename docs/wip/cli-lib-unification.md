@@ -191,11 +191,23 @@ Rewrote all 16 files onto `fobStm` (worker-sarveda ×3, worker-alex ×13). **Cle
 - [x] **Validated the chain**: `npm install` in both workers resolves `@fob/stm#v0.1.0` from GitHub;
       all 16 migrated step files import cleanly. Lockfiles updated + committed.
 
-**Remaining (ops / needs real data — cannot be done from here):**
-- [ ] **Rename deploy secrets** `FOB_STATEMENTS_API_*` → `FOB_STM_API_*` (origin-only URL, no
-      `/api/v1`), including per-org `FOB_STM_API_*_<ORG>` for the AV line, before the next deploy.
-- [ ] **Live smoke-run** one step per worker against real creds (esp. AV multi-org + P3 search) —
-      import resolves, but end-to-end behavior against the API is unverified.
+**Deploy (workers run locally, not via devops/PM2):**
+- [x] worker-alex local `.env` renamed to `FOB_STM_API_*` (origin-only, `/api/v1` stripped), verified
+      byte-for-byte. worker-sarveda skipped (its `.env` uses `FOB_TXN_API_*` — creds decision pending).
+- [ ] **Live smoke-run** one worker-alex step against real creds (AV multi-org + P3 search are riskiest).
+
+### Phase 6: Explicit credentials — no ambient env (v0.2.0) ✅
+Design follow-up: `fobStm()` reading `process.env.FOB_STM_*` was **ambient configuration** — impure,
+imposed env-var names, action-at-a-distance. Switched to **explicit injection**.
+- [x] `fobStm({ api_key, api_secret })` required + explicit; the transport never reads `process.env`.
+      `api_url` optional, defaults to `https://statements.finopsbricks.com` (`DEFAULT_API_URL`).
+- [x] CLI `config.js`: dropped the `FOB_STM_API_*` env branch — resolves purely from profiles
+      (`--profile` > `current_org`); env can no longer silently override the active profile.
+- [x] Added `transactions.search` so callers don't need the `apiPost` escape hatch.
+- [x] worker-alex global steps use a `stmClient()` helper (the one place the worker names its env);
+      AV line already injected per-org. Released **`v0.2.0`**; worker dep bumped + reinstalled; typecheck
+      clean; steps import cleanly. Commits: fob-stm `f7dc063`, worker-alex `191dcb3`.
+- [x] New engineering standard: **[No Ambient Configuration](../../../../alex/engineering-standards/principles/no-ambient-configuration.md)** (`9300730`).
 
 ## Related Files
 
