@@ -198,17 +198,17 @@ Extract the statements slice into a standalone 2-in-1 `@fob/stm` (client + `fob-
 - [x] **CHECKPOINT: CLI use case validated.** `fob-stm` was `npm link`ed alongside `fobs` and
       `fob-stm <args>` compared against `fobs stm <args>`. CLI use case confirmed; library/worker
       use case now unpaused.
-- [ ] **Library superset — build per object, review each (in progress).** Rather than one big
-      superset pass, reshape `client.js` one resource at a time into a drop-in over
-      `lib-worker-statements`. **`accounts` done + under review** [uncommitted]: `getAllAccounts`
-      now returns a flat array (was `{data,...}`); transport gained legacy `FOB_STATEMENTS_*` env
-      fallback + `/api/v1`-base tolerance (both additive, CLI untouched since handlers call the
-      transport directly). New `tests/lib/accounts.test.js` covers array-return, legacy env, URL
-      tolerance, override precedence. Remaining objects: statements (+`getAllStatementsForAccount`),
-      transactions (`getAllTransactions` → array, `(account_id, creds)` sig), checks (+`updateChecks`),
-      rules, work-records.
-- [ ] **Migrate worker consumers** via a compat shim (deferred until CLI validated + `fob-stm`
-      published to GitHub). Plan: make `@fob/stm` a superset of `lib-worker-statements`
+- [ ] **Library/CLI unification (SUPERSEDES the superset plan) → sibling WIP
+      `cli-lib-unification.md`.** The per-object superset reshape of `client.js` was tried, then
+      dropped: it left the CLI and the library as two independent implementations of the same
+      endpoints (drift-prone by design). Instead, a shared `src/resources/` layer becomes the single
+      source of endpoint truth, consumed by both the CLI (presentation only) and the library — now a
+      `fobStm(creds)` bound client factory with per-resource namespaces (`stm.accounts.list()`).
+      Backward-compat (legacy `FOB_STATEMENTS_*` env, `/api/v1` tolerance, drop-in signatures) is
+      dropped: workers get **rewritten**, not shimmed. The uncommitted superset changes were reverted.
+      Starting with the accounts vertical slice as the review gate.
+- [ ] **Migrate worker consumers** — now a **rewrite** onto `fobStm` (not a compat shim), tracked in
+      `cli-lib-unification.md` Phase 5. Original shim plan retained below for context only. Plan: make `@fob/stm` a superset of `lib-worker-statements`
       (add `getAllStatementsForAccount`, `updateChecks`; `getAll*` return arrays; accept legacy
       `FOB_STATEMENTS_*` env; tolerate a `/api/v1` base URL), then rewrite
       `lib-worker-statements` as a thin re-export shim over `@fob/stm` so the 16 worker files
