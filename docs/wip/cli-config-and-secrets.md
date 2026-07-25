@@ -10,9 +10,10 @@ baseline is plaintext `0600` under a single family root `~/.fob/<tool>/`; encryp
 dirs are added later as additive, opt-in layers. Credential profiles are managed under a
 `config profiles <verb>` namespace (blanket `profiles` object + a per-CLI domain alias like `orgs`),
 in a single `config.yml` (no config/credentials split). Profiles will also cache each org's
-server-resolved identity (`org_id`/`org_slug`) via a new statements-app `whoami` endpoint we'll
-build (G, decided). Remaining: `config status`/whoami polish (D). Token lifecycle (C) parked — no
-strong preference.
+server-resolved identity (`org_id`/`org_slug`) via the statements-app `whoami` endpoint —
+**now shipped (G): `GET /api/v1/whoami` + `getIdentity()` in the shared client**; remaining G work is
+wiring it into the fob-stm CLI (`profiles add`/`refresh`, enriched `list`). Remaining:
+`config status`/whoami polish (D). Token lifecycle (C) parked — no strong preference.
 
 ---
 
@@ -144,7 +145,8 @@ The one architectural constraint to honor from day one: **keep secret storage be
       always in `config.yml`). See
       [global-vs-project-config.md](./cli-industry-research/global-vs-project-config.md).
 - [x] **G — auto-resolve & cache each profile's org identity (`org_id`, `org_slug`): DECIDED
-      2026-07-25 (design locked); needs a new statements-app `whoami` endpoint we will build.** The
+      2026-07-25 (design locked). Server-side dependency SHIPPED 2026-07-25 (`GET /api/v1/whoami`
+      + shared-client `getIdentity`); CLI wiring remains.** The
       profile name (`alex`) is a local alias; the `api_key` actually authenticates as a specific org
       (slug `alex`, id `P8nxj0gb9hlF`) that only the server knows. Fetch that identity and store it
       as **non-secret metadata** so the config is self-describing and `config profiles list` shows
@@ -159,10 +161,16 @@ The one architectural constraint to honor from day one: **keep secret storage be
         staleness risk is low and `refresh` covers it.
       Enriches E's list to `NAME | ORG SLUG | ORG ID | API URL`; sits on the metadata side of A/F's
       metadata↔secret separation. Precedent: `aws sts get-caller-identity` (live), `gh` caching the
-      user in `hosts.yml` (cached). **Dependency (action, cross-repo):** the statements app has no
-      `whoami` — **build `GET /api/v1/whoami` → `{ org_id, org_slug }` (+ org name) for the authed
-      key.** Client core gains `getIdentity(credentials)` (workers can use it too). Until it ships,
-      `add`/`refresh` store creds without identity and warn. Example shape:
+      user in `hosts.yml` (cached). **Dependency (action, cross-repo): SHIPPED 2026-07-25** — the
+      statements app now exposes `GET /api/v1/whoami` → `{ org_id, org_slug, org_name }` for the
+      authed key (not scope-gated; any valid key identifies itself), and the shared client core
+      (`@fob/lib-worker-statements`) gained `getIdentity(credentials)`. See
+      [statements: docs/wip/whoami-endpoint.md](/Users/alex/ec2code/finopsbricks/apps/statements.finopsbricks.com/docs/wip/whoami-endpoint.md).
+      **Remaining (fob-stm side, this repo):** wire `getIdentity` into the fob-stm CLI client
+      (`src/client.js`), resolve identity on `profiles add`, add `config profiles refresh <name>` /
+      `refresh --all`, store `org_id`/`org_slug` as non-secret metadata, enrich the `list` table.
+      Until identity is wired in the CLI, `add`/`refresh` store creds without identity and warn.
+      Example shape:
       ```yaml
       alex:
         org_id: P8nxj0gb9hlF     # server truth, non-secret
@@ -198,8 +206,9 @@ The one architectural constraint to honor from day one: **keep secret storage be
 - [ ] Apply to `fob-stm` (G, blocked on `whoami`): org-identity caching + `profiles refresh <name>` /
       `refresh --all`; forward-compat list columns already in place.
 - [ ] Small wins: `config profiles current`; pre-split secret/metadata in the data model (A's enabler).
-- [ ] **Cross-repo dependency (G):** build `GET /api/v1/whoami` → `{ org_id, org_slug }` in the
-      statements app; add `getIdentity(credentials)` to the `@fob/stm` client core.
+- [x] **Cross-repo dependency (G): DONE 2026-07-25.** `GET /api/v1/whoami` → `{ org_id, org_slug,
+      org_name }` shipped in the statements app; `getIdentity(credentials)` added to the shared
+      `@fob/lib-worker-statements` client core.
 - [ ] Graduate durable conclusions from `cli-industry-research/` into the standard; archive the raw
       survey.
 
