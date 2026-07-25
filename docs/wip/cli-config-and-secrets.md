@@ -1,6 +1,6 @@
 # CLI Config & Secrets — Standard for the `fob-<tool>` Family
 
-## Status: IN PROGRESS (~40%)
+## Status: IN PROGRESS (~55%)
 
 Decide how `fob-stm` (and every future `fob-<tool>`) stores config, models multiple accounts, and
 manages secrets — grounded in a survey of 14 mature CLIs. Goal: a **simple, secure-enough baseline**
@@ -67,8 +67,9 @@ dimensions and, for each, separates what's **settled** from what's an **open dec
   [config-location.md](./cli-industry-research/config-location.md). Note: workers import the client
   and read `FOB_STM_API_*` env — they never touch this dir, so multi-OS here is CLI-only and
   `os.homedir()` covers it. **Implemented in `src/config.js` (2026-07-25).**
-- **E. Command surface & profile naming — DECIDED 2026-07-25 (Option A). Not yet implemented.**
-  Make `config` a **namespace, not an object**, and name the managed object explicitly. Fixes the
+- **E. Command surface & profile naming — DECIDED 2026-07-25 (Option A). Implemented 2026-07-25
+  (commit `007b2aa`).** Make `config` a **namespace, not an object**, and name the managed object
+  explicitly. Fixes the
   ambiguity where `config list` reads as "list settings" but lists orgs.
   - **Canonical object = `profiles`**, family-wide. The standard defines one shape once:
     `fob-<tool> config profiles <list|add|use|remove>`. Precedent: gcloud
@@ -123,7 +124,8 @@ The one architectural constraint to honor from day one: **keep secret storage be
       Implemented in `src/config.js`; migration code removed; tests + CLI smoke pass.
 - [x] **E — command surface & profile naming: DECIDED 2026-07-25 (Option A) — `config` is a
       namespace; canonical object `profiles` (`config profiles <verb>`) with a per-CLI domain alias
-      (`orgs` in fob-stm); `list` regains table + `config: <path>` footer.** Not yet implemented.
+      (`orgs` in fob-stm); `list` regains table + `config: <path>` footer.** Implemented 2026-07-25
+      (`007b2aa`); `config profiles`/`orgs` + `rm` alias, table+footer, `listProfiles()`, tests pass.
 - [ ] **C — token lifecycle: PARKED 2026-07-25 (no strong opinion).** Not pursuing scoped/expiring
       keys now; revisit if/when the statements API offers them. Manual key rotation stays available
       via `profiles add` replacing creds.
@@ -194,10 +196,11 @@ The one architectural constraint to honor from day one: **keep secret storage be
 - [ ] Refine
       [engineering-standards: cli/command-grammar.md](/Users/alex/ec2code/alex/engineering-standards/cli/command-grammar.md)
       with the `config <entity> <verb>` shape + blanket-`profiles`-with-domain-alias rule (E).
-- [ ] Apply to `fob-stm`: baseline storage behind the `config.js` seam; the `config profiles`/`orgs`
-      command surface + `list` table/footer (E); org-identity caching + `profiles refresh <name>` /
-      `refresh --all` (G); any agreed small wins (`config profiles current`, pre-split
-      secret/metadata).
+- [x] Apply to `fob-stm` (E): `config profiles`/`orgs` command surface + `list` table/footer +
+      `listProfiles()`/`configPath()`. [`007b2aa`]
+- [ ] Apply to `fob-stm` (G, blocked on `whoami`): org-identity caching + `profiles refresh <name>` /
+      `refresh --all`; forward-compat list columns already in place.
+- [ ] Small wins: `config profiles current`; pre-split secret/metadata in the data model (A's enabler).
 - [ ] **Cross-repo dependency (G):** build `GET /api/v1/whoami` → `{ org_id, org_slug }` in the
       statements app; add `getIdentity(credentials)` to the `@fob/stm` client core.
 - [ ] Graduate durable conclusions from `cli-industry-research/` into the standard; archive the raw
@@ -214,8 +217,7 @@ The one architectural constraint to honor from day one: **keep secret storage be
 - [engineering-standards: cli/project-structure.md](/Users/alex/ec2code/alex/engineering-standards/cli/project-structure.md) — the `config.js` credential-source layer
 - [engineering-standards WIP: cli-standards-and-wrappers.md](/Users/alex/ec2code/alex/engineering-standards/docs/wip/cli-standards-and-wrappers.md) — parent family effort (Phase 3 = fob-stm)
 - `src/config.js` — credential store (plaintext `0600`, org model)
-- `src/cli/config/` + `src/cli/index.js` — the `config` command surface to refactor to
-  `config profiles`/`orgs` (E)
+- `src/cli/config/` + `src/cli/index.js` — the `config profiles`/`orgs` command surface (E, done)
 
 ## Related Notes
 - [WIP Files Pattern](/Users/alex/ec2code/alex/engineering-standards/git-workflow/wip-files.md)
