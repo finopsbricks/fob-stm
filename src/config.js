@@ -87,8 +87,29 @@ export function listProfiles() {
     api_url: o.api_url,
     org_id: o.org_id,
     org_slug: o.org_slug,
+    org_name: o.org_name,
   }));
   return { current: cfg.current_org, path: CONFIG_PATH, profiles };
+}
+
+/** Raw credentials for a named profile (for identity refresh). */
+export function getProfileCredentials(name) {
+  const cfg = loadConfig();
+  const o = cfg.orgs[name];
+  if (!o) throw new Error(`No profile named '${name}'.`);
+  return { api_url: o.api_url, api_key: o.api_key, api_secret: o.api_secret };
+}
+
+/**
+ * Merge server-resolved identity (org_id/org_slug/org_name — WIP decision G)
+ * into a stored profile as non-secret metadata. Leaves credentials untouched.
+ */
+export function setProfileIdentity(name, { org_id, org_slug, org_name } = {}) {
+  const cfg = loadConfig();
+  if (!cfg.orgs[name]) throw new Error(`No profile named '${name}'.`);
+  cfg.orgs[name] = { ...cfg.orgs[name], org_id, org_slug, org_name };
+  saveConfig(cfg);
+  return cfg.orgs[name];
 }
 
 /**

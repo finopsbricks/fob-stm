@@ -9,6 +9,7 @@ process.env.FOB_STM_CONFIG_DIR = dir;
 
 const {
   addOrg, removeOrg, useOrg, listOrgs, listProfiles, configPath,
+  getProfileCredentials, setProfileIdentity,
   loadConfig, resolveCredentials, setOrgOverride,
 } = await import('../src/config.js');
 
@@ -41,6 +42,19 @@ describe('config store (~/.fob/fob-stm/config.yml)', () => {
     ]);
     // secrets must never appear in the display rows
     expect(JSON.stringify(profiles)).not.toMatch(/api_key|api_secret|k_acme|s_acme/);
+  });
+
+  it('caches org identity (setProfileIdentity) and exposes profile creds (getProfileCredentials)', () => {
+    expect(getProfileCredentials('acme')).toEqual({
+      api_url: 'https://acme.example/', api_key: 'k_acme', api_secret: 's_acme',
+    });
+
+    setProfileIdentity('acme', { org_id: 'P8x', org_slug: 'acme-co', org_name: 'Acme Co' });
+    const acme = listProfiles().profiles.find((p) => p.name === 'acme');
+    expect(acme).toMatchObject({ org_id: 'P8x', org_slug: 'acme-co', org_name: 'Acme Co' });
+    // identity is metadata; creds are untouched
+    expect(getProfileCredentials('acme').api_key).toBe('k_acme');
+    expect(() => setProfileIdentity('nope', {})).toThrow(/No profile named/);
   });
 
   it('resolves credentials for the current org', () => {

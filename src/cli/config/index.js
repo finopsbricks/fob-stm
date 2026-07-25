@@ -3,6 +3,7 @@ import { addConfigHandler } from './add.js';
 import { listConfigHandler } from './list.js';
 import { useConfigHandler } from './use.js';
 import { removeConfigHandler } from './remove.js';
+import { refreshConfigHandler } from './refresh.js';
 
 /**
  * The multi-tenant object is a "profile" — a named set of credentials. fob-stm's
@@ -41,7 +42,16 @@ function buildProfilesSubcommands(yargs) {
       (y) => y.positional('name', { describe: 'Profile name', type: 'string' }),
       safe(removeConfigHandler),
     )
-    .demandCommand(1, 'Specify an action: list, add, use, remove');
+    .command(
+      'refresh [name]',
+      "Refresh a profile's org identity from the server (--all for every profile)",
+      (y) =>
+        y
+          .positional('name', { describe: 'Profile name (omit with --all)', type: 'string' })
+          .option('all', { describe: 'Refresh every profile', type: 'boolean' }),
+      safe(refreshConfigHandler),
+    )
+    .demandCommand(1, 'Specify an action: list, add, use, remove, refresh');
 }
 
 export function buildConfigSubcommands(yargs) {

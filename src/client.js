@@ -15,6 +15,18 @@ import { apiGet, apiPost, apiPut, apiPatch, apiGetAll } from './http.js';
 
 const V1 = '/api/v1';
 
+// --- Identity -------------------------------------------------------------
+
+/**
+ * Resolve the authenticated key's org identity. Any valid key can call this
+ * (no model scope required). Returns `{ org_id, org_slug, org_name }`, or null
+ * if the response carries no data.
+ */
+export async function getIdentity(credentials) {
+  const res = await apiGet(`${V1}/whoami`, { credentials });
+  return res?.data ?? null;
+}
+
 // --- Accounts -------------------------------------------------------------
 
 export function getAccounts(params = {}, credentials) {
