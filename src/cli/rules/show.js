@@ -1,18 +1,17 @@
-import { apiGet } from '../../http.js';
+// @ts-check
 import { formatField, formatDate } from '../../utils/format.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 
 export async function showRuleHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id } = argv;
-  const result = await apiGet(`/api/v1/rules/${encodeURIComponent(id)}`, { credentials: creds });
+  const r = await stm.rules.get(id);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(r, null, 2));
     return;
   }
 
-  const r = result?.data;
   if (!r) {
     console.error(`No rule found for id: ${id}`);
     process.exit(1);

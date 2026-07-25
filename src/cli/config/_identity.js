@@ -1,4 +1,4 @@
-import { getIdentity } from '../../client.js';
+import { fobStm } from '../../index.js';
 import { getProfileCredentials, setProfileIdentity } from '../../config.js';
 
 /**
@@ -11,7 +11,7 @@ import { getProfileCredentials, setProfileIdentity } from '../../config.js';
  */
 export async function refreshIdentity(name) {
   try {
-    const id = await getIdentity(getProfileCredentials(name));
+    const id = await fobStm(getProfileCredentials(name)).whoami();
     if (!id?.org_id) {
       console.error(`(could not resolve org identity for '${name}': empty response)`);
       return false;

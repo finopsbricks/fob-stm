@@ -1,6 +1,6 @@
-import { apiPost } from '../../http.js';
+// @ts-check
 import { resolveConditions, resolveActions, formatCondition, formatAction } from './_rule-args.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 
 export async function createRuleHandler(argv) {
   const conditions = resolveConditions(argv);
@@ -23,15 +23,14 @@ export async function createRuleHandler(argv) {
   if (argv.priority !== undefined) body.priority = argv.priority;
   if (argv.disabled) body.enabled = false;
 
-  const creds = requireCreds();
-  const result = await apiPost('/api/v1/rules', body, { credentials: creds });
+  const stm = clientFor();
+  const r = await stm.rules.create(body);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(r, null, 2));
     return;
   }
 
-  const r = result?.data ?? {};
   console.log(`Created rule ${r.id}: ${r.name}`);
   console.log(`  priority: ${r.priority}   enabled: ${r.enabled}`);
   console.log(`  when ALL of:`);

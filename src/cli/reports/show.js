@@ -1,5 +1,5 @@
-import { apiGet } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+// @ts-check
+import { clientFor } from '../_helpers.js';
 
 export const REPORT_NAMES = [
   'expense',
@@ -16,19 +16,16 @@ export const REPORT_NAMES = [
 
 export async function showReportHandler(argv) {
   const { name } = argv;
-  const creds = requireCreds();
+  const stm = clientFor();
 
-  const result = await apiGet(`/api/v1/reports/${encodeURIComponent(name)}`, {
-    searchParams: {
-      date_from: argv.from,
-      date_to: argv.to,
-      group_by: argv.groupBy,
-      accounts: argv.accounts,
-      particulars: argv.particulars,
-      entity: argv.entity,
-      category: argv.category,
-    },
-    credentials: creds,
+  const result = await stm.reports.get(name, {
+    date_from: argv.from,
+    date_to: argv.to,
+    group_by: argv.groupBy,
+    accounts: argv.accounts,
+    particulars: argv.particulars,
+    entity: argv.entity,
+    category: argv.category,
   });
 
   // Reports return a custom shape (e.g. { data, period, accounts }) that

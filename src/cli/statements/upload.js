@@ -1,8 +1,8 @@
+// @ts-check
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { basename, extname } from 'path';
-import { apiPostForm } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 
 const EXT_MIME_TYPES = {
   '.pdf': 'application/pdf',
@@ -26,7 +26,7 @@ export async function uploadStatementHandler(argv) {
     );
   }
 
-  const creds = requireCreds();
+  const stm = clientFor();
 
   const name = basename(file);
   const buffer = await readFile(file);
@@ -36,13 +36,12 @@ export async function uploadStatementHandler(argv) {
   if (argv.account) form.append('account_id', argv.account);
   if (argv.parserType) form.append('parser_type', argv.parserType);
 
-  const result = await apiPostForm('/api/v1/statements', form, { credentials: creds });
+  const d = await stm.statements.upload(form);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(d, null, 2));
     return;
   }
 
-  const d = result?.data ?? {};
   console.log(`Uploaded '${name}' as statement ${d.id ?? '?'} (job ${d.job_id ?? '?'}, step '${d.step ?? 'read_file'}').`);
 }

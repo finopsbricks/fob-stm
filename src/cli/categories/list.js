@@ -1,8 +1,8 @@
+// @ts-check
 import { writeFileSync } from 'fs';
-import { apiGet } from '../../http.js';
 import { formatTable, formatCsv, formatCurrency } from '../../utils/format.js';
 import { buildColumnSelector } from '../../utils/list.js';
-import { requireCreds, validateDateRange } from '../_helpers.js';
+import { clientFor, validateDateRange } from '../_helpers.js';
 
 // Public fields the API exposes.
 const PUBLIC_FIELDS = ['category', 'type', 'count', 'inflow', 'outflow'];
@@ -44,21 +44,18 @@ function renderTotals(totals) {
 
 export async function listCategoriesHandler(argv) {
   validateDateRange({ from: argv.from, to: argv.to });
-  const creds = requireCreds();
+  const stm = clientFor();
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
 
-  const result = await apiGet('/api/v1/categories', {
-    searchParams: {
-      date_from: argv.from,
-      date_to: argv.to,
-      accounts: argv.accounts,
-      type: argv.type,
-    },
-    credentials: creds,
+  const result = await stm.categories.list({
+    date_from: argv.from,
+    date_to: argv.to,
+    accounts: argv.accounts,
+    type: argv.type,
   });
 
-  const payload = result?.data ?? {};
+  const payload = result?.data;
   const rows = payload.data ?? [];
 
   if (format === 'json') {

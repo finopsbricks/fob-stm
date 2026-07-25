@@ -1,6 +1,6 @@
 # Unify the `fob-stm` CLI and Library on One Shared Resource Layer
 
-## Status: IN PROGRESS (~5%) — design decided, accounts prototype next
+## Status: IN PROGRESS (~90%) — Phases 1–4 done (all resources on the shared layer + type-checked); only Phase 5 (worker rewrite) remains
 
 The CLI and the importable library currently re-implement the same endpoints in two
 places, so they drift. This refactor introduces a single **resource layer** that owns every
@@ -145,25 +145,30 @@ The reviewable prototype (one object, end to end) before fanning out.
       + `@returns`, which also makes `tsc` verify the impl matches the type (drift caught). Proven:
       bad method call, bad record field, and impl/type drift all error.
 
-### Phase 3: Fan out remaining resources 🔄
-Same pattern for: statements, transactions, rules, reports, categories, entities. (Lib-only, no CLI:
-work-records, checks — add to `fobStm` for worker parity.) The per-resource recipe:
-1. `src/types/api/<R>.types.js` — response shapes (record/list rows), `export {}`.
-2. `src/resources/<r>.js` — `@ts-check`; `<R>Api` typedef (co-located) + `buildX(ctx)` with
-   `@returns {<R>Api}`; inline paths; `unwrap` for single-record ops; category-based returns.
-3. Wire `<r>: buildX(ctx)` into `fobStm` (`src/index.js`) + add to the `StmClient` typedef.
-4. Refactor `src/cli/<r>/*` handlers → presentation-only (`clientFor()` + `stm.<r>.*` + render),
-   add `@ts-check`, preserving exact output/error strings.
-5. `npm run typecheck` (0 errors — the `@returns` verifies impl vs type) + tests + CLI smoke.
+### Phase 3: Fan out remaining resources ✅
+Each resource follows the accounts recipe: `src/types/api/<R>.types.js` (response shapes) +
+`src/resources/<r>.js` (`@ts-check`, co-located `<R>Api` typedef, `buildX(ctx)` with `@returns`) +
+wired into `fobStm`/`StmClient` + `src/cli/<r>/*` handlers reduced to presentation (`@ts-check`).
+Fanned out in parallel (one subagent per resource), then integrated + type-checked centrally.
+- [x] transactions   [x] categories   [x] entities   [x] reports   [x] rules   [x] statements
+- [x] work-records + checks (lib-only namespaces on `fobStm`, no CLI)
+- [x] **All handlers `@ts-check`'d; `npm run typecheck` → 0 errors; tests 19/19; all 7 CLI help
+      trees wired; no-creds → clean exit 1.** The `?? {}` idiom was dropped everywhere (it created
+      `Record | {}`, which fails property access under the declared types); strictNullChecks-off makes
+      `Record|null` field access fine. `statements` added `linkedTransactionCount`/`downloadUrl` helpers
+      so no handler holds a raw path; upload builds FormData in the handler → `ctx.postForm`, download
+      streams in the handler off `ctx.getStream`/`ctx.buildUrl`.
 
-- [ ] transactions   - [ ] categories   - [ ] entities   - [ ] reports   - [ ] rules   - [ ] statements
-- [ ] work-records + checks (lib-only namespaces)
+**Behavior changes (intentional, from the category-return model):** `--json` on single-record ops now
+prints the unwrapped record (not the `{data}` envelope); `list --json` bulk output drops the
+(meaningless) last-page `page_context`; `rules preview` lost its pagination hint (total now =
+transactions.length). Dropping `?? {}` means an abnormal null API write-response now throws rather
+than printing `undefined`.
 
-### Phase 4: Retire the old library shape ❌
-- [ ] Delete `src/client.js`; `src/index.js` exports `fobStm` + (decided) transport primitives.
-- [ ] Revert the uncommitted accounts-superset changes (legacy env in `http.js`, array
-      `getAllAccounts` in `client.js`, `tests/lib/accounts.test.js`) — folded into Phase 2's versions.
-- [ ] Update `_identity.js` and any internal importer of `client.js` onto the factory.
+### Phase 4: Retire the old library shape ✅
+- [x] Deleted `src/client.js`; `src/index.js` exports `fobStm` + transport primitives.
+- [x] Superseded accounts-superset changes were reverted back in the Phase-2 commit prep.
+- [x] Migrated `_identity.js` onto `fobStm(creds).whoami()`; nothing imports `client.js` anymore.
 
 ### Phase 5: Rewrite worker consumers ❌
 Tracked in the parent WIP's "migrate worker consumers" item — now a **rewrite** onto `fobStm`

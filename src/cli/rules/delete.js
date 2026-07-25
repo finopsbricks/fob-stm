@@ -1,15 +1,15 @@
+// @ts-check
 import { confirm } from '@inquirer/prompts';
-import { apiGet, apiDelete, ApiError } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { ApiError } from '../../http.js';
+import { clientFor } from '../_helpers.js';
 
 export async function deleteRuleHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id } = argv;
 
   let rule = null;
   try {
-    const result = await apiGet(`/api/v1/rules/${encodeURIComponent(id)}`, { credentials: creds });
-    rule = result?.data;
+    rule = await stm.rules.get(id);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       console.error(`No rule found for id: ${id}`);
@@ -19,7 +19,7 @@ export async function deleteRuleHandler(argv) {
   }
 
   if (!argv.yes) {
-    console.log(`Rule: ${rule.name ?? id} (priority ${rule.priority}, enabled: ${rule.enabled})`);
+    console.log(`Rule: ${rule?.name ?? id} (priority ${rule?.priority}, enabled: ${rule?.enabled})`);
     const ok = await confirm({
       message: `Permanently delete rule ${id}? (Use 'edit --disable' to keep it but stop it applying.)`,
       default: false,
@@ -30,6 +30,6 @@ export async function deleteRuleHandler(argv) {
     }
   }
 
-  await apiDelete(`/api/v1/rules/${encodeURIComponent(id)}`, { credentials: creds });
+  await stm.rules.delete(id);
   console.log(`Deleted rule ${id}.`);
 }

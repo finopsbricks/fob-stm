@@ -1,6 +1,7 @@
+// @ts-check
 import { confirm } from '@inquirer/prompts';
-import { apiPut, ApiError } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { ApiError } from '../../http.js';
+import { clientFor } from '../_helpers.js';
 
 // Metadata fields the CLI lets you set. The API also accepts monetary/date/
 // account changes, but those carry fingerprint/dedup implications and are left
@@ -8,7 +9,7 @@ import { requireCreds } from '../_helpers.js';
 const EDITABLE_FIELDS = ['entity', 'category', 'type', 'po', 'comments', 'particulars'];
 
 export async function editTransactionHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const ids = String(argv.id)
     .split(',')
     .map((s) => s.trim())
@@ -48,10 +49,8 @@ export async function editTransactionHandler(argv) {
   const results = [];
   for (const id of ids) {
     try {
-      const res = await apiPut(`/api/v1/transactions/${encodeURIComponent(id)}`, body, {
-        credentials: creds,
-      });
-      results.push({ id, ok: true, data: res?.data ?? {} });
+      const record = await stm.transactions.edit(id, body);
+      results.push({ id, ok: true, data: record ?? {} });
     } catch (err) {
       if (err instanceof ApiError) {
         results.push({ id, ok: false, error: err.message });

@@ -1,6 +1,6 @@
-import { apiPut } from '../../http.js';
+// @ts-check
 import { resolveConditions, resolveActions, formatCondition, formatAction } from './_rule-args.js';
-import { requireCreds } from '../_helpers.js';
+import { clientFor } from '../_helpers.js';
 
 export async function editRuleHandler(argv) {
   const body = {};
@@ -23,15 +23,14 @@ export async function editRuleHandler(argv) {
     );
   }
 
-  const creds = requireCreds();
-  const result = await apiPut(`/api/v1/rules/${encodeURIComponent(argv.id)}`, body, { credentials: creds });
+  const stm = clientFor();
+  const r = await stm.rules.update(argv.id, body);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(r, null, 2));
     return;
   }
 
-  const r = result?.data ?? {};
   console.log(`Updated rule ${r.id}: ${r.name}`);
   console.log(`  priority: ${r.priority}   enabled: ${r.enabled}`);
   if (body.conditions) {

@@ -1,3 +1,4 @@
+// @ts-check
 import { confirm } from '@inquirer/prompts';
 import { ApiError } from '../../http.js';
 import { clientFor } from '../_helpers.js';

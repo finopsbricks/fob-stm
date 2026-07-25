@@ -1,18 +1,17 @@
-import { apiGet } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+// @ts-check
+import { clientFor } from '../_helpers.js';
 import { formatField, formatDate, formatAmount, formatBytes } from '../../utils/format.js';
 
 export async function showStatementHandler(argv) {
+  const stm = clientFor();
   const { id } = argv;
-  const creds = requireCreds();
-  const result = await apiGet(`/api/v1/statements/${encodeURIComponent(id)}`, { credentials: creds });
+  const s = await stm.statements.get(id);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(s, null, 2));
     return;
   }
 
-  const s = result?.data;
   if (!s) {
     console.error(`No statement found for id: ${id}`);
     process.exit(1);

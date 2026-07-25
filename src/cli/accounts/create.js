@@ -1,3 +1,4 @@
+// @ts-check
 import { clientFor } from '../_helpers.js';
 import { formatCurrency } from '../../utils/format.js';
 
@@ -12,7 +13,7 @@ export async function createAccountHandler(argv) {
   if (argv.opening !== undefined) body.opening_balance = argv.opening;
   if (argv.uploadFrequency !== undefined) body.upload_frequency = argv.uploadFrequency;
 
-  const a = (await stm.accounts.create(body)) ?? {};
+  const a = await stm.accounts.create(body);
 
   if (argv.json) {
     console.log(JSON.stringify(a, null, 2));

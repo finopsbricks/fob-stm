@@ -1,3 +1,4 @@
+// @ts-check
 import { clientFor } from '../_helpers.js';
 import { formatCurrency } from '../../utils/format.js';
 
@@ -19,7 +20,7 @@ export async function updateAccountHandler(argv) {
     );
   }
 
-  const a = (await stm.accounts.update(argv.id, body)) ?? {};
+  const a = await stm.accounts.update(argv.id, body);
 
   if (argv.json) {
     console.log(JSON.stringify(a, null, 2));

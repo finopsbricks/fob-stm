@@ -1,20 +1,17 @@
-import { apiGet } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+// @ts-check
+import { clientFor } from '../_helpers.js';
 import { formatField, formatDate, formatAmount } from '../../utils/format.js';
 
 export async function showTransactionHandler(argv) {
-  const creds = requireCreds();
+  const stm = clientFor();
   const { id } = argv;
-  const result = await apiGet(`/api/v1/transactions/${encodeURIComponent(id)}`, {
-    credentials: creds,
-  });
+  const t = await stm.transactions.get(id);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(t, null, 2));
     return;
   }
 
-  const t = result?.data;
   if (!t) {
     console.error(`No transaction found for id: ${id}`);
     process.exit(1);

@@ -1,3 +1,4 @@
+// @ts-check
 import { confirm } from '@inquirer/prompts';
 import { ApiError } from '../../http.js';
 import { clientFor } from '../_helpers.js';
@@ -39,7 +40,7 @@ export async function mergeAccountsHandler(argv) {
     }
   }
 
-  const summary = (await stm.accounts.merge(retainId, deleteId)) ?? {};
+  const summary = await stm.accounts.merge(retainId, deleteId);
 
   if (argv.json) {
     console.log(JSON.stringify(summary, null, 2));

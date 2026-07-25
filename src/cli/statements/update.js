@@ -1,5 +1,5 @@
-import { apiPatch } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+// @ts-check
+import { clientFor } from '../_helpers.js';
 import { formatField, formatAmount } from '../../utils/format.js';
 
 function toMilliUnits(value, label) {
@@ -29,15 +29,14 @@ export async function updateStatementHandler(argv) {
     );
   }
 
-  const creds = requireCreds();
-  const result = await apiPatch(`/api/v1/statements/${encodeURIComponent(id)}`, body, { credentials: creds });
+  const stm = clientFor();
+  const s = await stm.statements.update(id, body);
 
   if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(s, null, 2));
     return;
   }
 
-  const s = result?.data ?? {};
   const w = 18;
   console.log(`Updated statement ${id}:`);
   if (body.period_start != null) console.log(formatField('Period Start', s.period_start, w));

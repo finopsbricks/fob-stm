@@ -1,25 +1,21 @@
+// @ts-check
 import { createWriteStream, existsSync } from 'fs';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
-import {
-  apiGetStream,
-  buildAuthedUrl,
-  parseContentDispositionFilename,
-} from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { parseContentDispositionFilename } from '../../http.js';
+import { clientFor } from '../_helpers.js';
 import { formatBytes } from '../../utils/format.js';
 
 export async function downloadStatementHandler(argv) {
+  const stm = clientFor();
   const { id } = argv;
-  const creds = requireCreds();
-  const path = `/api/v1/statements/${encodeURIComponent(id)}/download`;
 
   if (argv.printUrl) {
-    console.log(buildAuthedUrl(path, { credentials: creds }).toString());
+    console.log(stm.statements.downloadUrl(id).toString());
     return;
   }
 
-  const { response } = await apiGetStream(path, { credentials: creds });
+  const { response } = await stm.statements.download(id);
 
   const headerFilename = parseContentDispositionFilename(
     response.headers.get('content-disposition'),
@@ -33,7 +29,7 @@ export async function downloadStatementHandler(argv) {
     );
   }
 
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(outputPath));
+  await pipeline(Readable.fromWeb(/** @type {any} */ (response.body)), createWriteStream(outputPath));
 
   const len = response.headers.get('content-length');
   const size = len ? formatBytes(Number(len)) : '';

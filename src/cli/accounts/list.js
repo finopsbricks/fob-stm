@@ -1,3 +1,4 @@
+// @ts-check
 import { writeFileSync } from 'fs';
 import { MAX_ALL_ROWS } from '../../http.js';
 import { clientFor } from '../_helpers.js';

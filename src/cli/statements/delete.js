@@ -1,15 +1,15 @@
+// @ts-check
 import { confirm } from '@inquirer/prompts';
-import { apiGet, apiDelete, ApiError } from '../../http.js';
-import { requireCreds } from '../_helpers.js';
+import { ApiError } from '../../http.js';
+import { clientFor } from '../_helpers.js';
 
 export async function deleteStatementHandler(argv) {
+  const stm = clientFor();
   const { id } = argv;
-  const creds = requireCreds();
 
   let statement = null;
   try {
-    const result = await apiGet(`/api/v1/statements/${encodeURIComponent(id)}`, { credentials: creds });
-    statement = result?.data;
+    statement = await stm.statements.get(id);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       console.error(`No statement found for id: ${id}`);
@@ -32,7 +32,7 @@ export async function deleteStatementHandler(argv) {
   }
 
   try {
-    await apiDelete(`/api/v1/statements/${encodeURIComponent(id)}`, { credentials: creds });
+    await stm.statements.delete(id);
   } catch (err) {
     if (err instanceof ApiError && err.code === 'HAS_LINKED_TRANSACTIONS') {
       console.error(`${err.message}`);
