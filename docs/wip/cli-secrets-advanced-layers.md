@@ -17,7 +17,7 @@ The baseline decisions (A/B/E/F/G decided, D shipped) were made and implemented 
 graduated into `engineering-standards/cli/config-and-secrets.md`. The one architectural constraint
 carried forward from that effort, which every item below depends on:
 
-> **Keep secret storage behind a single `src/config.js` seam** so encryption/keychain layers swap in
+> **Keep secret storage behind a single `src/cli/config-store.js` seam** so encryption/keychain layers swap in
 > without touching command handlers.
 
 The layered roadmap the baseline preserves:
@@ -39,7 +39,7 @@ gains token scopes or expiry.
 See [token-types-and-lifecycle.md](./cli-industry-research/token-types-and-lifecycle.md).
 
 ### 2. Pre-split secret ↔ metadata in the data model (Layer-2 enabler)
-Low-cost prep to consider the next time `src/config.js` is touched: internally separate secret fields
+Low-cost prep to consider the next time `src/cli/config-store.js` is touched: internally separate secret fields
 (`api_key`/`api_secret`) from non-secret metadata (`api_url`, `org_id`, `org_slug`) in the stored
 shape, so a future keychain move relocates only the secret. YAML nests (unlike AWS's INI), so this
 stays one file — the AWS-style `credentials.yml` only ever appears as the **no-keychain fallback of
@@ -68,7 +68,7 @@ the security layers; can happen any time.
 ## Implementation Phases
 
 ### Phase 1: Data-model prep (opportunistic) ❌
-- [ ] Split secret vs metadata fields in `src/config.js`'s stored shape (item 2) — do it the next
+- [ ] Split secret vs metadata fields in `src/cli/config-store.js`'s stored shape (item 2) — do it the next
       time `config.js` is edited for another reason.
 
 ### Phase 2: Layer 2 — opt-in keychain ❌
@@ -89,7 +89,7 @@ the security layers; can happen any time.
 - [cli-industry-research/](./cli-industry-research/README.md) — the six dimension notes + 14-CLI matrix
 - [engineering-standards: cli/config-and-secrets.md](/Users/alex/ec2code/alex/engineering-standards/cli/config-and-secrets.md) — the shipped baseline standard; Layer 2/3 graduate here
 - [parent WIP: cli-standards-and-wrappers.md](./cli-standards-and-wrappers.md) — parent family effort
-- `src/config.js` — credential store (plaintext `0600`); the single seam Layer 2/3 swap in behind
+- `src/cli/config-store.js` — credential store (plaintext `0600`); the single seam Layer 2/3 swap in behind
 
 ## Related Notes
 - [WIP Files Pattern](/Users/alex/ec2code/alex/engineering-standards/git-workflow/wip-files.md)
