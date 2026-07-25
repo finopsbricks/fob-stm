@@ -79,6 +79,39 @@ export function formatAmount(milliUnits) {
 }
 
 /**
+ * Format a byte count as a human-readable size. Returns '' for null/undefined.
+ * "812 B", "1.5 KB", "3.2 MB".
+ */
+export function formatBytes(bytes) {
+  if (bytes == null || bytes === '') return '';
+  const n = Number(bytes);
+  if (!Number.isFinite(n)) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Format duration between two ISO timestamps.
+ *   "1m" / "2h 15m" / "3d 4h"
+ */
+export function formatDuration(start, end) {
+  if (!start || !end) return '—';
+  const ms = new Date(end) - new Date(start);
+  if (ms < 0) return '—';
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remMin = minutes % 60;
+  if (hours < 24) return remMin > 0 ? `${hours}h ${remMin}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remHr = hours % 24;
+  return remHr > 0 ? `${days}d ${remHr}h` : `${days}d`;
+}
+
+/**
  * Format an ISO date string to human-readable.
  * "2026-03-15 10:23:01"
  */

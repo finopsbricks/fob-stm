@@ -28,6 +28,17 @@ export function paginationOptions(yargs) {
     .option('json', { describe: 'Output raw JSON', type: 'boolean' });
 }
 
+/**
+ * Validate a --from/--to date range using the CLI's own flag names.
+ * Presence is enforced by yargs; this checks format and ordering.
+ */
+export function validateDateRange({ from, to }) {
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (from && !DATE_RE.test(from)) throw new Error('--from must be in YYYY-MM-DD format');
+  if (to && !DATE_RE.test(to)) throw new Error('--to must be in YYYY-MM-DD format');
+  if (from && to && from > to) throw new Error('--from must be before or equal to --to');
+}
+
 // Print the credential-source hint at most once per invocation.
 let hintPrinted = false;
 

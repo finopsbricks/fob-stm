@@ -12,6 +12,12 @@ import yargs from 'yargs';
 import { setOrgOverride } from '../config.js';
 import { buildConfigSubcommands } from './config/index.js';
 import { buildAccountsSubcommands } from './accounts/index.js';
+import { buildTransactionsSubcommands } from './transactions/index.js';
+import { buildStatementsResourceSubcommands } from './statements/index.js';
+import { buildRulesSubcommands } from './rules/index.js';
+import { buildReportsSubcommands } from './reports/index.js';
+import { buildCategoriesSubcommands } from './categories/index.js';
+import { buildEntitiesSubcommands } from './entities/index.js';
 
 export function run(argv) {
   return yargs(argv)
@@ -26,6 +32,12 @@ export function run(argv) {
     })
     .command('config <action>', 'Manage statements credentials', buildConfigSubcommands)
     .command('accounts <action>', 'Query accounts', buildAccountsSubcommands)
+    .command('transactions <action>', 'Query transactions', buildTransactionsSubcommands)
+    .command('statements <action>', 'Query uploaded statement files', buildStatementsResourceSubcommands)
+    .command('rules <action>', 'Query categorization rules', buildRulesSubcommands)
+    .command('reports <action>', 'Compute reports', buildReportsSubcommands)
+    .command('categories [action]', 'Query category aggregates (read-only)', buildCategoriesSubcommands)
+    .command('entities [action]', 'Query entity aggregates (read-only)', buildEntitiesSubcommands)
     .demandCommand(1, 'Specify a resource. Try `fob-stm --help`.')
     .strict()
     .help()

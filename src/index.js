@@ -9,4 +9,16 @@
  */
 
 export * from './client.js';
-export { ApiError, apiGet, apiPost, apiPut, apiPatch, apiDelete, apiGetAll } from './http.js';
+export {
+  ApiError,
+  apiGet,
+  apiPost,
+  apiPut,
+  apiPatch,
+  apiDelete,
+  apiGetAll,
+  apiPostForm,
+  apiGetStream,
+  buildAuthedUrl,
+  parseContentDispositionFilename,
+} from './http.js';

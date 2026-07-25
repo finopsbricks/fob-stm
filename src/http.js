@@ -106,6 +106,94 @@ export function apiDelete(path, options) {
 }
 
 /**
+ * Build the fully-resolved request URL (no credentials embedded). For commands
+ * like `download --print-url` that show the URL the CLI would hit.
+ */
+export function buildAuthedUrl(path, { credentials, searchParams } = {}) {
+  const creds = resolveCreds(credentials);
+  return buildUrl(creds.api_url, path, searchParams);
+}
+
+/**
+ * POST a multipart/form-data body (file uploads). The FormData boundary is set
+ * by fetch, so no content-type header is set. Unwraps the `{ data }` envelope.
+ */
+export async function apiPostForm(path, formData, { credentials } = {}) {
+  const creds = resolveCreds(credentials);
+  const url = buildUrl(creds.api_url, path);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'api-key': creds.api_key, 'api-secret': creds.api_secret, accept: 'application/json' },
+    body: formData,
+  });
+
+  const text = await response.text();
+  let respBody = null;
+  if (text) {
+    try {
+      respBody = JSON.parse(text);
+    } catch {
+      throw new ApiError(
+        `Invalid JSON response (status ${response.status}): ${text.slice(0, 200)}`,
+        { code: 'INVALID_RESPONSE', status: response.status },
+      );
+    }
+  }
+  if (!response.ok) {
+    const code = respBody?.error?.code || 'HTTP_ERROR';
+    const message = respBody?.error?.message || `${response.status} ${response.statusText}`;
+    throw new ApiError(message, { code, status: response.status });
+  }
+  return respBody;
+}
+
+/**
+ * GET a binary response with auth headers. Returns the raw Response + resolved
+ * URL so the caller can inspect headers and stream the body. Throws ApiError on
+ * non-2xx (parsing a JSON error envelope if present).
+ * @returns {Promise<{ response: Response, url: URL }>}
+ */
+export async function apiGetStream(path, { credentials } = {}) {
+  const creds = resolveCreds(credentials);
+  const url = buildUrl(creds.api_url, path);
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { 'api-key': creds.api_key, 'api-secret': creds.api_secret },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let respBody = null;
+    if (text) {
+      try { respBody = JSON.parse(text); } catch { /* non-JSON error body */ }
+    }
+    const code = respBody?.error?.code || 'HTTP_ERROR';
+    const message = respBody?.error?.message || `${response.status} ${response.statusText}`;
+    throw new ApiError(message, { code, status: response.status });
+  }
+  return { response, url };
+}
+
+/**
+ * Extract the filename from a Content-Disposition header (quoted, unquoted, or
+ * RFC 5987 forms). Returns null if absent.
+ */
+export function parseContentDispositionFilename(header) {
+  if (!header) return null;
+  const enc = header.match(/filename\*=(?:UTF-8'')?([^;\r\n]+)/i);
+  if (enc) {
+    try { return decodeURIComponent(enc[1].trim()); } catch { /* fall through */ }
+  }
+  const quoted = header.match(/filename="((?:[^"\\]|\\.)*)"/i);
+  if (quoted) return quoted[1].replace(/\\(.)/g, '$1');
+  const bare = header.match(/filename=([^;\s]+)/i);
+  if (bare) return bare[1];
+  return null;
+}
+
+/**
  * Auto-paginating GET. Walks `page_context.has_more`, concatenating each page's
  * `data` array. Ignores `page`/`limit` in `searchParams` and fetches at the max
  * page size. Caps at `maxRows` and reports `truncated`.

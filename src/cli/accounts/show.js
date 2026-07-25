@@ -1,10 +1,11 @@
-import { getAccount } from '../../client.js';
+import { apiGet } from '../../http.js';
 import { requireCreds } from '../_helpers.js';
 import { formatField, formatDate, formatCurrency } from '../../utils/format.js';
 
 export async function showAccountHandler(argv) {
   const creds = requireCreds();
-  const result = await getAccount(argv.id, creds);
+  const { id } = argv;
+  const result = await apiGet(`/api/v1/accounts/${encodeURIComponent(id)}`, { credentials: creds });
 
   if (argv.json) {
     console.log(JSON.stringify(result, null, 2));
@@ -13,7 +14,7 @@ export async function showAccountHandler(argv) {
 
   const acct = result?.data;
   if (!acct) {
-    console.error(`No account found for id: ${argv.id}`);
+    console.error(`No account found for id: ${id}`);
     process.exit(1);
   }
 

@@ -41,11 +41,17 @@ Grammar: `fob-stm <resource> <action> [target] [options]`. Every read command su
 Precedence: `--org` flag → `FOB_STM_API_*` env (all three set) → current org in
 `~/.fob-stm/config.yml` (mode 0600). The base URL is origin-only; the client adds `/api/v1`.
 
+## CLI resources
+
+`config`, `accounts`, `transactions`, `statements` (uploaded files), `rules`, `reports`,
+`categories`, `entities` — full parity with the retired `fobs statements …` surface. Run
+`fob-stm <resource>` to see a resource's actions, or `fob-stm <resource> <action> --help`.
+
 ## Status
 
-Vertical slice: client core complete; CLI covers `config` + `accounts`. Remaining resources
-(transactions, statements, rules, reports, categories, entities) fan out next — see
-`engineering-standards/docs/wip/cli-standards-and-wrappers.md` (Phase 3).
+CLI at parity; client core complete. Remaining Phase 3 work: first-run config migration from
+`~/.fobs`, migrating worker consumers off `@fob/lib-worker-statements`, and deprecating it. See
+`engineering-standards/docs/wip/cli-standards-and-wrappers.md`.
 
 ## Test
 

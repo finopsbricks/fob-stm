@@ -52,3 +52,16 @@ export function parseStatus(value) {
   if (['active', 'retired', 'quarantined'].includes(value)) return value;
   throw new Error(`--status must be 'all', 'active', 'retired', or 'quarantined' (got '${value}')`);
 }
+
+/**
+ * Parse an --archived tri-state flag into the API's `is_archived` boolean.
+ * @returns {boolean|undefined} undefined = all rows, true = archived only, false = active only.
+ */
+export function parseArchived(value) {
+  if (value === undefined || value === null || value === '' || value === 'all') {
+    return undefined;
+  }
+  if (value === 'active') return false;
+  if (value === 'archived') return true;
+  throw new Error(`--archived must be 'all', 'active', or 'archived' (got '${value}')`);
+}
