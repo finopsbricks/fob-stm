@@ -1,6 +1,6 @@
 # CLI Config & Secrets — Standard for the `fob-<tool>` Family
 
-## Status: IN PROGRESS (~85%)
+## Status: IN PROGRESS (~90%)
 
 Decide how `fob-stm` (and every future `fob-<tool>`) stores config, models multiple accounts, and
 manages secrets — grounded in a survey of 14 mature CLIs. Goal: a **simple, secure-enough baseline**
@@ -11,8 +11,9 @@ dirs are added later as additive, opt-in layers. Credential profiles are managed
 `config profiles <verb>` namespace (blanket `profiles` object + a per-CLI domain alias like `orgs`),
 in a single `config.yml` (no config/credentials split). Profiles cache each org's server-resolved
 identity (`org_id`/`org_slug`) via the statements-app `GET /api/v1/whoami` — **shipped end-to-end (G):
-endpoint + `getIdentity()` + `profiles add`/`refresh` + enriched `list`, verified live**. Remaining:
-`config status`/whoami polish (D). Token lifecycle (C) parked — no strong preference.
+endpoint + `getIdentity()` + `profiles add`/`refresh` + enriched `list`, verified live**. The
+`config profiles current`/`whoami` command (D) is shipped too. All fob-stm decisions (A/B/E/F/G/D)
+are now implemented. Token lifecycle (C) parked — no strong preference.
 
 ---
 
@@ -101,12 +102,16 @@ dimensions and, for each, separates what's **settled** from what's an **open dec
   - **Touch points when implemented:** `src/cli/config/index.js` (nest a `profiles`/`orgs` subtree),
     `src/cli/config/list.js` (table + footer), and the root wiring in `src/cli/index.js`.
 
-**Still open — deferred until the research is read:**
+**Decided (cont.):**
+- **D. `config profiles current` / `whoami` — DECIDED + SHIPPED 2026-07-25 (`c5aeaab`).** Prints the
+  active profile, resolution source (flag > env > current), cached org identity, and API URL;
+  `--json` supported; `describeCurrent()` reuses `resolveCredentials()`. Also polished the `source`
+  label `org '<name>'` → `profile '<name>'`.
+
+**Parked:**
 - **C. Token lifecycle.** Whether to push the statements API team for scoped/expiring keys, and/or
   document a manual rotation habit now. API-gated. See
   [token-types-and-lifecycle.md](./cli-industry-research/token-types-and-lifecycle.md).
-- **D. Small UX win.** Add `config status` / `whoami` printing active org + resolution source. See
-  [profiles-and-switching.md](./cli-industry-research/profiles-and-switching.md).
 
 **The layered roadmap the baseline must preserve:**
 - Layer 1 (baseline, now): plaintext `0600`, single module owns storage.
@@ -135,8 +140,8 @@ The one architectural constraint to honor from day one: **keep secret storage be
 - [ ] **C — token lifecycle: PARKED 2026-07-25 (no strong opinion).** Not pursuing scoped/expiring
       keys now; revisit if/when the statements API offers them. Manual key rotation stays available
       via `profiles add` replacing creds.
-- [ ] **D — `config status`/`whoami`:** in scope for the fob-stm baseline? (Partly covered by E's
-      profile-list footer; a dedicated `config profiles current` may still be worth it.)
+- [x] **D — `config profiles current`/`whoami`: DECIDED + SHIPPED 2026-07-25 (`c5aeaab`)** — active
+      profile + source + cached identity, `--json`; `source` label polished to `profile '<name>'`.
 - [x] **F — one config file vs AWS-style `config`/`credentials` split: DECIDED 2026-07-25 — one
       file.** Keep a single `config.yml`; the metadata↔secret separation lives in the data model (A's
       enabler), and the AWS-style `credentials.yml` only ever appears later as the no-keychain
@@ -210,7 +215,8 @@ The one architectural constraint to honor from day one: **keep secret storage be
       `listProfiles()`/`configPath()`. [`007b2aa`]
 - [x] Apply to `fob-stm` (G): org-identity caching (`getIdentity`/`setProfileIdentity`),
       `profiles add` resolve-on-add, `profiles refresh <name>`/`--all`, enriched `list`. [`7151257`]
-- [ ] Small wins: `config profiles current`; pre-split secret/metadata in the data model (A's enabler).
+- [x] `config profiles current`/`whoami` (D). [`c5aeaab`]
+- [ ] Optional: pre-split secret/metadata in the data model (A's keychain enabler).
 - [x] **Cross-repo dependency (G): DONE 2026-07-25.** `GET /api/v1/whoami` → `{ org_id, org_slug,
       org_name }` shipped in the statements app; `getIdentity(credentials)` added to the shared
       `@fob/lib-worker-statements` client core.
