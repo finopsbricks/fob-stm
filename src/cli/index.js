@@ -23,12 +23,13 @@ export function run(argv) {
   return yargs(argv)
     .scriptName('fob-stm')
     .usage('$0 <resource> <action> [target] [options]')
-    .option('org', {
-      describe: 'Use credentials from a specific configured org (overrides current + env)',
+    .option('profile', {
+      alias: 'org',
+      describe: 'Use credentials from a specific configured profile (overrides current + env)',
       type: 'string',
     })
     .middleware((argv) => {
-      if (argv.org) setOrgOverride(argv.org);
+      if (argv.profile) setOrgOverride(argv.profile);
     })
     .command('config <resource>', 'Manage credential profiles (alias: orgs)', buildConfigSubcommands)
     .command('accounts <action>', 'Query accounts', buildAccountsSubcommands)

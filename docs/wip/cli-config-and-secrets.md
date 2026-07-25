@@ -89,6 +89,12 @@ dimensions and, for each, separates what's **settled** from what's an **open dec
     identity am I on" — **partially resolving D**.
   - **No back-compat** (pre-customer): the flat `config <verb>` commands move under
     `config profiles <verb>` (+ `orgs` alias); the old flat forms are removed.
+  - **Global override flag = `--profile`, alias `--org`** (2026-07-25). The per-command credential
+    override follows the same blanket-noun + domain-alias rule as the commands: `--profile` is
+    canonical, `--org` stays as a yargs alias (one line). Both resolve identically; the
+    "not configured" error is now flag-agnostic (`Profile '<name>' is not configured`). The internal
+    `source` label (`org '<name>'`, shown in status output) is left untouched pending D's resolution.
+    Touch points: `src/cli/index.js` (option + middleware), `src/config.js` (comments + error text).
   - **Feeds the standard:** primarily `engineering-standards/cli/command-grammar.md` (the
     `config <entity> <verb>` shape + "blanket object noun with optional per-CLI domain alias" rule),
     with a pointer from `auth-patterns.md`.

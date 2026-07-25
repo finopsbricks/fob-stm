@@ -21,7 +21,7 @@ const CONFIG_PATH = join(CONFIG_DIR, 'config.yml');
 
 let orgOverride = null;
 
-/** Set by the `--org <name>` global flag (yargs middleware). Beats env + current_org. */
+/** Set by the `--profile <name>` global flag (alias `--org`; yargs middleware). Beats env + current_org. */
 export function setOrgOverride(name) {
   orgOverride = name;
 }
@@ -114,7 +114,7 @@ export function setProfileIdentity(name, { org_id, org_slug, org_name } = {}) {
 
 /**
  * Resolve credentials for the current command.
- * Precedence: `--org` override > FOB_STM_API_* env (all three set) > config current_org.
+ * Precedence: `--profile` override > FOB_STM_API_* env (all three set) > config current_org.
  * @returns {{ api_url: string, api_key: string, api_secret: string, source: string }}
  */
 export function resolveCredentials() {
@@ -122,7 +122,7 @@ export function resolveCredentials() {
 
   if (orgOverride) {
     const org = cfg.orgs[orgOverride];
-    if (!org) throw new Error(`--org '${orgOverride}' is not configured. Run \`fob-stm config profiles add ${orgOverride}\`.`);
+    if (!org) throw new Error(`Profile '${orgOverride}' is not configured. Run \`fob-stm config profiles add ${orgOverride}\`.`);
     return { ...org, source: `org '${orgOverride}'` };
   }
 
