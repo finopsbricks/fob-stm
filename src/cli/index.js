@@ -3,8 +3,8 @@
  *
  *   fob-stm <resource> <action> [target] [options]
  *
- * A single-tool CLI (statements only). Credentials come from ~/.fob-stm/config.yml
- * or FOB_STM_API_* env; `config` manages the former. Replaces `fobs statements …`.
+ * A single-tool CLI (statements only). Credentials come from ~/.fob/fob-stm/config.yml
+ * or FOB_STM_API_* env; `config` manages the former.
  */
 
 import yargs from 'yargs';

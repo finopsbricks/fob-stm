@@ -1,11 +1,14 @@
 /**
- * CLI credential store — reads/writes ~/.fob-stm/config.yml (mode 0600) and
+ * CLI credential store — reads/writes ~/.fob/fob-stm/config.yml (mode 0600) and
  * resolves which credentials the current command uses.
+ *
+ * Config lives under the shared family root ~/.fob/ so every fob-<tool> wrapper
+ * keeps its config in one place. Path is home-dir based (os.homedir()) for
+ * multi-OS support; not XDG. Override the whole dir with FOB_STM_CONFIG_DIR.
  *
  * CLI-only: the importable client (src/index.js) never imports this. CLI
  * handlers call resolveCredentials() and pass the result to client functions as
- * the `credentials` override. Single tool, per-org (no per-app nesting — that
- * belonged to the multi-app `fobs` aggregator this package replaces).
+ * the `credentials` override. Single tool, per-org (no per-app nesting).
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -13,12 +16,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
 
-const CONFIG_DIR = process.env.FOB_STM_CONFIG_DIR || join(homedir(), '.fob-stm');
+const CONFIG_DIR = process.env.FOB_STM_CONFIG_DIR || join(homedir(), '.fob', 'fob-stm');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.yml');
-
-// Legacy `fobs` aggregator config, migrated on first run.
-const FOBS_CONFIG_DIR = process.env.FOBS_CONFIG_DIR || join(homedir(), '.fobs');
-const FOBS_CONFIG_PATH = join(FOBS_CONFIG_DIR, 'config.yml');
 
 let orgOverride = null;
 
@@ -27,45 +26,10 @@ export function setOrgOverride(name) {
   orgOverride = name;
 }
 
-/**
- * Build a fob-stm config from the legacy `~/.fobs/config.yml`, promoting each
- * org's `apps.statements` block to org-level. Returns null if there's nothing
- * to migrate. Non-destructive — never writes to the fobs file.
- */
-function migrateFromFobs() {
-  if (!existsSync(FOBS_CONFIG_PATH)) return null;
-  let old;
-  try {
-    old = yaml.load(readFileSync(FOBS_CONFIG_PATH, 'utf8')) || {};
-  } catch {
-    return null;
-  }
-  const orgs = {};
-  for (const [name, org] of Object.entries(old.orgs ?? {})) {
-    const stm = org?.apps?.statements;
-    if (stm?.api_url && stm?.api_key && stm?.api_secret) {
-      orgs[name] = { api_url: stm.api_url, api_key: stm.api_key, api_secret: stm.api_secret };
-    }
-  }
-  if (Object.keys(orgs).length === 0) return null;
-  const current_org = orgs[old.current_org] ? old.current_org : Object.keys(orgs)[0];
-  return { current_org, orgs };
-}
-
 export function loadConfig() {
   if (existsSync(CONFIG_PATH)) {
     const cfg = yaml.load(readFileSync(CONFIG_PATH, 'utf8')) || {};
     return { current_org: cfg.current_org ?? null, orgs: cfg.orgs ?? {} };
-  }
-  // First run: migrate statements credentials out of the legacy fobs config.
-  const migrated = migrateFromFobs();
-  if (migrated) {
-    saveConfig(migrated);
-    console.error(
-      `(migrated ${Object.keys(migrated.orgs).length} org(s)' statements credentials ` +
-        `from ${FOBS_CONFIG_PATH} → ${CONFIG_PATH})`,
-    );
-    return migrated;
   }
   return { current_org: null, orgs: {} };
 }

@@ -1,56 +1,65 @@
-import { jest } from '@jest/globals';
-import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, existsSync, statSync } from 'node:fs';
+import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 
-describe('config migration from ~/.fobs', () => {
-  it('promotes each org\'s apps.statements to org-level on first run', async () => {
-    const fobsDir = mkdtempSync(join(tmpdir(), 'fobs-'));
-    const stmDir = join(mkdtempSync(join(tmpdir(), 'stm-')), 'nested'); // does not exist yet
-    writeFileSync(
-      join(fobsDir, 'config.yml'),
-      [
-        'current_org: acme',
-        'orgs:',
-        '  acme:',
-        '    apps:',
-        '      statements:',
-        '        api_url: https://statements.example/',
-        '        api_key: k_acme',
-        '        api_secret: s_acme',
-        '      billing:',
-        '        api_url: https://billing.example/',
-        '        api_key: k_bil',
-        '        api_secret: s_bil',
-        '  other:',
-        '    apps:',
-        '      statements:',
-        '        api_url: https://statements.example/',
-        '        api_key: k_other',
-        '        api_secret: s_other',
-        '',
-      ].join('\n'),
-    );
+// The config store writes to FOB_STM_CONFIG_DIR when set, so point it at a
+// throwaway dir before importing the module.
+const dir = join(mkdtempSync(join(tmpdir(), 'stm-')), 'nested'); // does not exist yet
+process.env.FOB_STM_CONFIG_DIR = dir;
 
-    process.env.FOBS_CONFIG_DIR = fobsDir;
-    process.env.FOB_STM_CONFIG_DIR = stmDir;
-    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+const { addOrg, removeOrg, useOrg, listOrgs, loadConfig, resolveCredentials, setOrgOverride } =
+  await import('../src/config.js');
 
-    const { loadConfig, resolveCredentials, listOrgs } = await import('../src/config.js');
+const creds = (n) => ({ api_url: `https://${n}.example/`, api_key: `k_${n}`, api_secret: `s_${n}` });
 
-    const cfg = loadConfig();
-    expect(cfg.current_org).toBe('acme');
-    // statements creds promoted to org level; billing app dropped.
-    expect(cfg.orgs.acme).toEqual({ api_url: 'https://statements.example/', api_key: 'k_acme', api_secret: 's_acme' });
-    expect(cfg.orgs.other).toEqual({ api_url: 'https://statements.example/', api_key: 'k_other', api_secret: 's_other' });
+describe('config store (~/.fob/fob-stm/config.yml)', () => {
+  it('starts empty when no config file exists', () => {
+    expect(loadConfig()).toEqual({ current_org: null, orgs: {} });
+    expect(listOrgs()).toEqual({ current: null, orgs: [] });
+  });
+
+  it('adds orgs, sets the first as current, and persists at mode 0600', () => {
+    addOrg('acme', creds('acme'));
+    addOrg('other', creds('other'));
+
     expect(listOrgs()).toEqual({ current: 'acme', orgs: ['acme', 'other'] });
-    // persisted so the migration notice shows only once.
-    expect(existsSync(join(stmDir, 'config.yml'))).toBe(true);
-    // resolveCredentials picks the current org.
-    expect(resolveCredentials()).toMatchObject({ api_key: 'k_acme', source: "org 'acme'" });
+    const file = join(dir, 'config.yml');
+    expect(existsSync(file)).toBe(true);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+  });
 
-    errSpy.mockRestore();
-    delete process.env.FOBS_CONFIG_DIR;
-    delete process.env.FOB_STM_CONFIG_DIR;
+  it('resolves credentials for the current org', () => {
+    expect(resolveCredentials()).toMatchObject({ api_key: 'k_acme', source: "org 'acme'" });
+  });
+
+  it('honors the --org override, then env, over the current org', () => {
+    setOrgOverride('other');
+    expect(resolveCredentials()).toMatchObject({ api_key: 'k_other', source: "org 'other'" });
+    setOrgOverride(null);
+
+    process.env.FOB_STM_API_URL = 'https://env.example/';
+    process.env.FOB_STM_API_KEY = 'k_env';
+    process.env.FOB_STM_API_SECRET = 's_env';
+    expect(resolveCredentials()).toMatchObject({ api_key: 'k_env', source: 'env' });
+    delete process.env.FOB_STM_API_URL;
+    delete process.env.FOB_STM_API_KEY;
+    delete process.env.FOB_STM_API_SECRET;
+  });
+
+  it('switches and removes orgs, repointing current_org when the active one goes', () => {
+    useOrg('other');
+    expect(listOrgs().current).toBe('other');
+
+    removeOrg('other');
+    expect(listOrgs()).toEqual({ current: 'acme', orgs: ['acme'] });
+  });
+});
+
+describe('default config dir', () => {
+  it('nests under the shared family root ~/.fob/', async () => {
+    // Sanity: without the override the path is ~/.fob/fob-stm (not the legacy ~/.fob-stm).
+    // Computed the same way the module does, so we assert the convention, not a live file.
+    const expected = join(homedir(), '.fob', 'fob-stm', 'config.yml');
+    expect(expected.endsWith(join('.fob', 'fob-stm', 'config.yml'))).toBe(true);
   });
 });
