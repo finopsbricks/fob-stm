@@ -49,4 +49,4 @@ in the WIP tracker, not here.
 ## Related
 - [WIP tracker: cli-config-and-secrets.md](../cli-config-and-secrets.md) — decisions, phases, status
 - [engineering-standards: cli/auth-patterns.md](/Users/alex/ec2code/alex/engineering-standards/cli/auth-patterns.md) — the current standard this research will refine
-- [parent WIP: cli-standards-and-wrappers.md](../cli-standards-and-wrappers.md) — the parent family effort (Phase 3 = fob-stm)
+- [parent WIP: cli-standards-and-wrappers.md](../../../../fob/docs/wip/cli-standards-and-wrappers.md) — the parent family effort (Phase 3 = fob-stm)
