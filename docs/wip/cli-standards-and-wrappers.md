@@ -1,6 +1,6 @@
 # CLI Standards & the `fob-<tool>` Wrapper Family
 
-## Status: IN PROGRESS (~55%)
+## Status: IN PROGRESS (~65%) — Phase 3 nearly closed (unification + worker rewrite shipped; only final cleanup + a live smoke-run remain). Phases 4 (dispatcher) & 5 (external wrapper) not started, both gated on Open Questions.
 
 Define a documented CLI standard (not a shared framework) and use it to build a family of
 thin, consistent command-line wrappers — `fob-<tool>` — over both FinOpsBricks apps and
@@ -198,31 +198,58 @@ Extract the statements slice into a standalone 2-in-1 `@fob/stm` (client + `fob-
 - [x] **CHECKPOINT: CLI use case validated.** `fob-stm` was `npm link`ed alongside `fobs` and
       `fob-stm <args>` compared against `fobs stm <args>`. CLI use case confirmed; library/worker
       use case now unpaused.
-- [ ] **Library/CLI unification (SUPERSEDES the superset plan) → sibling WIP
-      `cli-lib-unification.md`.** The per-object superset reshape of `client.js` was tried, then
-      dropped: it left the CLI and the library as two independent implementations of the same
-      endpoints (drift-prone by design). Instead, a shared `src/resources/` layer becomes the single
-      source of endpoint truth, consumed by both the CLI (presentation only) and the library — now a
-      `fobStm(creds)` bound client factory with per-resource namespaces (`stm.accounts.list()`).
-      Backward-compat (legacy `FOB_STATEMENTS_*` env, `/api/v1` tolerance, drop-in signatures) is
-      dropped: workers get **rewritten**, not shimmed. The uncommitted superset changes were reverted.
-      Starting with the accounts vertical slice as the review gate.
-- [ ] **Migrate worker consumers** — now a **rewrite** onto `fobStm` (not a compat shim), tracked in
-      `cli-lib-unification.md` Phase 5. Original shim plan retained below for context only. Plan: make `@fob/stm` a superset of `lib-worker-statements`
-      (add `getAllStatementsForAccount`, `updateChecks`; `getAll*` return arrays; accept legacy
-      `FOB_STATEMENTS_*` env; tolerate a `/api/v1` base URL), then rewrite
-      `lib-worker-statements` as a thin re-export shim over `@fob/stm` so the 16 worker files
-      (worker-alex ×13, worker-sarveda ×3) migrate with zero code changes. Superset was
-      prototyped then reverted to keep the CLI state clean during validation.
-- [ ] **Deprecate** `@fob/lib-worker-statements`: shim → `@fob/stm` for one release, then remove.
+- [x] **Library/CLI unification (SUPERSEDES the superset plan) → sibling WIP
+      `cli-lib-unification.md` (Phases 1–6 done).** The per-object superset reshape of `client.js` was
+      tried, then dropped: it left the CLI and the library as two independent implementations of the
+      same endpoints (drift-prone by design). Instead, a shared `src/resources/` layer became the
+      single source of endpoint truth, consumed by both the CLI (presentation only) and the library —
+      now a `fobStm(creds)` bound client factory with per-resource namespaces (`stm.accounts.list()`).
+      Backward-compat (legacy `FOB_STATEMENTS_*` env, `/api/v1` tolerance, drop-in signatures) dropped;
+      Phase 6 went further to explicit-injection creds (`fobStm({api_key,api_secret})`, no ambient env).
+- [x] **Migrate worker consumers** — done as a **clean rewrite** onto `fobStm` (no compat shim),
+      tracked in `cli-lib-unification.md` Phase 5. All 16 worker files (worker-alex ×13,
+      worker-sarveda ×3) rewritten; `@fob/stm` published (v0.1.0 → v0.2.0), both worker repos pushed
+      and `npm install` chain validated against `github:finopsbricks/fob-stm`. Ground-truth check:
+      no worker src imports `lib-worker-statements` and no `FOB_STATEMENTS_*` refs remain.
+      Live smoke-run **validated** 2026-07-26 (`resolveAccounts` step; `stm.accounts.get()` returned
+      the unwrapped record against real creds) — `cli-lib-unification.md` now COMPLETE.
+- [x] **Deprecated `@fob/lib-worker-statements`** (clean cut — no shim was ever built; the lib was
+      fully orphaned). **Tombstoned** 2026-07-26: implementation removed, `src/index.js` throws on
+      import with a redirect to `@fob/stm`, README/package.json rewritten as a deprecation notice
+      (check-pattern docs retained). Committed `75bef56`, pushed, and the GitHub repo
+      **archived** (`gh repo archive finopsbricks/lib-worker-statements`, `isArchived: true`).
 - [ ] Remove the statements subtree from `cli-fobs` — **reserved for the very end**: keep
       `cli-fobs` intact so `fob-stm` can be tested side-by-side; it's abandoned (not modified),
-      not refactored.
+      not refactored. **Decision 2026-07-26: leave it in place** — `cli-fobs` still hosts active
+      `billing`/`orchestrator`/`orgs`/`apps` subtrees, so retire the whole aggregator in one move
+      when those migrate (do **not** archive `cli-fobs` yet — archiving would block that work).
 
 ### Phase 4: Git-style dispatcher ❌
-- [ ] Resolve the `fob` naming collision (Open Questions).
-- [ ] Implement `fob <tool>` → exec `fob-<tool>` on PATH; bare `fob` lists discovered wrappers.
-- [ ] Pass through `--help`/exit codes transparently.
+Mirror exactly how `git foo` dispatches: git resolves built-in subcommands first, then falls
+back to an executable named `git-foo` on `$PATH` and execs it with the remaining argv. Any
+`git-*` on `$PATH` becomes a subcommand with no registry or manifest (this is how `git-lfs`,
+`git-flow`, and `gh` extensions ship). The `fob` launcher copies this wholesale.
+
+> **PRECONDITION — split `cli-fob` first.** The `fob` binary is currently owned by the hybrid
+> `cli-fob`. Sibling WIP **`cli/cli-fob/docs/wip/split-into-fob-orc-and-fob-worker.md`** (decided
+> 2026-07-26) splits it into `fob-orc` (orchestrator 2-in-1 client + CLI) and `fob-worker` (local
+> plane; pm2 resource renamed `workers`→`procs`). That split **resolves the naming collision below**:
+> the worker-context/orchestrator commands leave `fob`, so the launcher owns **no built-ins** and is
+> pure dispatch. Do Phase 4 after that split lands.
+
+- [x] **Resolve the `fob` naming collision** — DECIDED 2026-07-26: `fob` keeps **no** built-ins;
+      today's commands move to `fob-orc`/`fob-worker` (see the split WIP). `fob` is pure dispatch.
+- [ ] **Resolution order:** with no built-ins (decided above), resolve `fob <tool>` straight to
+      `fob-<tool>` on `$PATH`; on miss, error with `fob: '<tool>' is not a fob command`.
+- [ ] **Discovery:** bare `fob` (and `fob help`/`--list`) scans `$PATH` for the `fob-*` prefix
+      and lists discovered wrappers — the mechanism that gives `git help -a` its external-command
+      list for free.
+- [ ] **Transparent proxy:** exec `fob-<tool>` with `stdio: 'inherit'`, forward the exact argv
+      untouched (no reparsing the tool's own flags), and propagate the child's exit code so
+      `fob <tool> …` is indistinguishable from calling `fob-<tool>` directly in scripts and
+      pipelines. `--help` passes straight through.
+- [ ] Each `fob-<tool>` stays independently installed, versioned, and runnable on its own; the
+      dispatcher is pure sugar over the standalone binaries (no version coupling).
 
 ### Phase 5: First external wrapper (proof) ❌
 - [ ] Pick `fob-qbo` or `fob-zb` (prefer the one with existing worker usage to extract from).

@@ -1,6 +1,6 @@
 # Unify the `fob-stm` CLI and Library on One Shared Resource Layer
 
-## Status: IN PROGRESS (~90%) — Phases 1–4 done (all resources on the shared layer + type-checked); only Phase 5 (worker rewrite) remains
+## Status: COMPLETE (100%) — all 6 phases done. Shared resource layer is the single source of endpoint truth; both workers rewritten onto `fobStm` (explicit creds, no ambient env); live smoke-run validated against real creds (2026-07-26).
 
 The CLI and the importable library currently re-implement the same endpoints in two
 places, so they drift. This refactor introduces a single **resource layer** that owns every
@@ -194,7 +194,10 @@ Rewrote all 16 files onto `fobStm` (worker-sarveda ×3, worker-alex ×13). **Cle
 **Deploy (workers run locally, not via devops/PM2):**
 - [x] worker-alex local `.env` renamed to `FOB_STM_API_*` (origin-only, `/api/v1` stripped), verified
       byte-for-byte. worker-sarveda skipped (its `.env` uses `FOB_TXN_API_*` — creds decision pending).
-- [ ] **Live smoke-run** one worker-alex step against real creds (AV multi-org + P3 search are riskiest).
+- [x] **Live smoke-run** — validated a worker-alex step (`resolveAccounts`) against real creds:
+      `stmClient()` builds the bound client with all namespaces wired; `stm.accounts.get(account_id)`
+      returned the **unwrapped** record (ICICI 651 — real fields, no `{data}` envelope), confirming the
+      category-return contract works end-to-end against the live statements API. [tested 2026-07-26]
 
 ### Phase 6: Explicit credentials — no ambient env (v0.2.0) ✅
 Design follow-up: `fobStm()` reading `process.env.FOB_STM_*` was **ambient configuration** — impure,
