@@ -1,6 +1,6 @@
 # CLI Standards & the `fob-<tool>` Wrapper Family
 
-## Status: IN PROGRESS (~65%) — Phase 3 nearly closed (unification + worker rewrite shipped; only final cleanup + a live smoke-run remain). Phases 4 (dispatcher) & 5 (external wrapper) not started, both gated on Open Questions.
+## Status: IN PROGRESS (~80%) — Phase 3 closed (fob-stm unification + worker rewrite shipped) and **Phase 4 dispatcher DONE** (via the cli-fob split → `fob-orc` + `fob-worker` + the `fob` launcher). Remaining: Phase 5 (first external wrapper, e.g. `fob-qbo`) + rollout housekeeping (publish, GitHub repo rename, wire the 4 binaries on PATH).
 
 Define a documented CLI standard (not a shared framework) and use it to build a family of
 thin, consistent command-line wrappers — `fob-<tool>` — over both FinOpsBricks apps and
@@ -224,32 +224,27 @@ Extract the statements slice into a standalone 2-in-1 `@fob/stm` (client + `fob-
       `billing`/`orchestrator`/`orgs`/`apps` subtrees, so retire the whole aggregator in one move
       when those migrate (do **not** archive `cli-fobs` yet — archiving would block that work).
 
-### Phase 4: Git-style dispatcher ❌
+### Phase 4: Git-style dispatcher ✅
 Mirror exactly how `git foo` dispatches: git resolves built-in subcommands first, then falls
 back to an executable named `git-foo` on `$PATH` and execs it with the remaining argv. Any
 `git-*` on `$PATH` becomes a subcommand with no registry or manifest (this is how `git-lfs`,
 `git-flow`, and `gh` extensions ship). The `fob` launcher copies this wholesale.
 
-> **PRECONDITION — split `cli-fob` first.** The `fob` binary is currently owned by the hybrid
-> `cli-fob`. Sibling WIP **`cli/cli-fob/docs/wip/split-into-fob-orc-and-fob-worker.md`** (decided
-> 2026-07-26) splits it into `fob-orc` (orchestrator 2-in-1 client + CLI) and `fob-worker` (local
-> plane; pm2 resource renamed `workers`→`procs`). That split **resolves the naming collision below**:
-> the worker-context/orchestrator commands leave `fob`, so the launcher owns **no built-ins** and is
-> pure dispatch. Do Phase 4 after that split lands.
+> **DONE via the cli-fob split** (sibling WIP **`cli/fob-worker/docs/wip/split-into-fob-orc-and-fob-worker.md`**,
+> 2026-07-26). `cli-fob` was split into `fob-orc` (orchestrator 2-in-1 client + CLI) and `fob-worker`
+> (local plane; `workers`→`procs`), freeing the `fob` name. The dispatcher is a new repo `cli/fob`
+> (commit `0a38d3c`).
 
-- [x] **Resolve the `fob` naming collision** — DECIDED 2026-07-26: `fob` keeps **no** built-ins;
-      today's commands move to `fob-orc`/`fob-worker` (see the split WIP). `fob` is pure dispatch.
-- [ ] **Resolution order:** with no built-ins (decided above), resolve `fob <tool>` straight to
-      `fob-<tool>` on `$PATH`; on miss, error with `fob: '<tool>' is not a fob command`.
-- [ ] **Discovery:** bare `fob` (and `fob help`/`--list`) scans `$PATH` for the `fob-*` prefix
-      and lists discovered wrappers — the mechanism that gives `git help -a` its external-command
-      list for free.
-- [ ] **Transparent proxy:** exec `fob-<tool>` with `stdio: 'inherit'`, forward the exact argv
-      untouched (no reparsing the tool's own flags), and propagate the child's exit code so
-      `fob <tool> …` is indistinguishable from calling `fob-<tool>` directly in scripts and
-      pipelines. `--help` passes straight through.
-- [ ] Each `fob-<tool>` stays independently installed, versioned, and runnable on its own; the
-      dispatcher is pure sugar over the standalone binaries (no version coupling).
+- [x] **Resolve the `fob` naming collision** — `fob` keeps **no** built-ins; the old commands moved to
+      `fob-orc`/`fob-worker`. `fob` is pure dispatch.
+- [x] **Resolution order:** no built-ins — `fob <tool>` resolves straight to `fob-<tool>` on `$PATH`;
+      on miss → `fob: '<tool>' is not a fob command` (exit 1).
+- [x] **Discovery:** bare `fob` / `fob help` scan `$PATH` for the `fob-*` prefix and list discovered
+      wrappers (`discoverTools`).
+- [x] **Transparent proxy:** exec `fob-<tool>` with `stdio: 'inherit'`, argv forwarded untouched, child
+      exit code propagated (verified 7→7, miss→1). `--help` passes straight through.
+- [x] Each `fob-<tool>` stays independently installed/versioned/runnable; the dispatcher is pure sugar
+      (no version coupling). Tests 7/7.
 
 ### Phase 5: First external wrapper (proof) ❌
 - [ ] Pick `fob-qbo` or `fob-zb` (prefer the one with existing worker usage to extract from).
@@ -279,8 +274,8 @@ the fob-stm yargs skeleton. [`d867a87`] Own sibling WIP (all phases done).
   `GET /api/v1/whoami` dependency (shipped)
 
 **Reference CLIs (finopsbricks):**
-- `cli/cli-fob/docs/cli-design-style.md` — grammar source of truth
-- `cli/cli-fob/docs/architecture/sor-cli-convergence.md` — prior decision being partly revisited
+- `cli/fob-worker/docs/cli-design-style.md` (was `cli/cli-fob/`) — grammar source of truth
+- `cli/fob-worker/docs/architecture/sor-cli-convergence.md` — prior decision being partly revisited
 - `cli/cli-fobs/docs/architecture/command-signature.md` — app-first tree, short codes
 - `cli/cli-fobs/src/utils/` — `safe()`, `format.js`, `http.js`, `config.js`, column selector
 - `cli/fob-email/` — dual lib+CLI shape, retrofitted onto the yargs skeleton (was `lib/lib-email`)
