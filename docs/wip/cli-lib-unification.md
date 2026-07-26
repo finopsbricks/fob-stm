@@ -10,7 +10,7 @@ The promise: *whatever the CLI can do, the library can do — by construction, n
 
 ---
 
-> **Parent WIP:** `cli/fob/docs/wip/cli-standards-and-wrappers.md` (Phase 3). This refactor
+> **Parent WIP:** `cli/fob-cli/docs/wip/cli-standards-and-wrappers.md` (Phase 3). This refactor
 > **supersedes** that phase's "make `@fob/stm` a superset of `lib-worker-statements`" plan: we are
 > rewriting worker consumers (no backward-compat shim), so the drop-in/legacy-env/`/api/v1`-tolerance
 > work is dropped. The uncommitted accounts-superset changes (`http.js` legacy-env fallback,
@@ -228,6 +228,6 @@ imposed env-var names, action-at-a-distance. Switched to **explicit injection**.
 
 ## Related Notes
 
-- [Parent WIP: CLI Standards & the fob-<tool> Wrapper Family](../../../fob/docs/wip/cli-standards-and-wrappers.md)
+- [Parent WIP: CLI Standards & the fob-<tool> Wrapper Family](../../../fob-cli/docs/wip/cli-standards-and-wrappers.md)
 - [WIP Files Pattern](/Users/alex/ec2code/alex/engineering-standards/git-workflow/wip-files.md)
 - [Separate Presentation from Logic](/Users/alex/ec2code/alex/engineering-standards/principles/scripting/separate-presentation-from-logic.md)
