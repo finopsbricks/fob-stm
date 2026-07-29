@@ -1,61 +1,120 @@
-# @fob/stm
+# @finopsbricks/fob-stm
 
-Statements app client **and** the `fob-stm` CLI in one package (a 2-in-1). Import the client in
-a worker, or drive the same functions from the terminal. Supersedes `@fob/lib-worker-statements`.
-
-Built to the CLI standard: `engineering-standards/cli/`.
-
-## As a library (workers)
-
-```js
-import { getAccounts, getAccountBalance } from '@fob/stm';
-
-// Credentials from FOB_STM_API_* env, or pass an explicit override to reach
-// another org from the same process:
-const accounts = await getAccounts({ category: 'bank' });
-const balance = await getAccountBalance(accountId, '2026-03-31', orgBCredentials);
-```
-
-Client functions: accounts, statements, transactions, rules, work-records. Each takes an
-optional `credentials` override (`{ api_url, api_key, api_secret }`). See `src/client.js`.
-
-## As a CLI
+Command-line client **and** importable library for the [FinOpsBricks Statements](https://statements.finopsbricks.com)
+API — a 2-in-1. Drive statements, accounts, transactions, rules and reports from your terminal,
+or import the same functions into your own code.
 
 ```bash
-fob-stm config add alex --api-url https://statements.finopsbricks.com/ \
-  --api-key fob_stm_xxx --api-secret yyy
-fob-stm config use alex
+npm install -g @finopsbricks/fob-stm
+```
 
+## Getting started
+
+1. Create an API key for your org at
+   `https://statements.finopsbricks.com/orgs/<your-org>/settings/apikeys` — copy the key and
+   secret (the secret is shown once).
+2. Add a profile:
+
+   ```bash
+   fob-stm config profiles add myorg \
+     --api-url https://statements.finopsbricks.com/ \
+     --api-key fob_stm_xxxxxxxxxxxx \
+     --api-secret yyyyyyyyyyyyyyyy
+   ```
+
+3. Confirm it works:
+
+   ```bash
+   fob-stm config profiles current
+   ```
+
+## Usage
+
+```
+fob-stm <resource> <action> [target] [options]
+```
+
+A grammar like `gh`/`docker`: a resource, an action, an optional target, then options. Run
+`fob-stm --help`, `fob-stm <resource> --help`, or `fob-stm <resource> <action> --help` at any
+level. Every read command supports `--json`.
+
+### Profiles
+
+Credentials live in `~/.fob/fob-stm/config.yml` (mode `0600`). Multiple profiles are supported —
+each maps to one Statements org. Switch the active one with `use`, or override per-command with
+`--profile` (alias `--org`).
+
+```bash
+fob-stm config profiles list
+fob-stm config profiles use myorg
+fob-stm config profiles current          # alias: whoami
+fob-stm config profiles refresh --all    # refresh cached org identity from the server
+fob-stm config profiles remove myorg
+fob-stm --profile staging accounts list  # one-off override
+```
+
+### Accounts
+
+```bash
 fob-stm accounts list
 fob-stm accounts list --category bank --status active
-fob-stm accounts list --format csv --output accounts.csv
 fob-stm accounts show <id>
-fob-stm accounts show <id> --json
+fob-stm accounts balance <id> 2026-03-31
 ```
 
-Grammar: `fob-stm <resource> <action> [target] [options]`. Every read command supports `--json`.
-`--org <name>` overrides the current org for one command.
-
-### Credentials
-
-Precedence: `--org` flag → `FOB_STM_API_*` env (all three set) → current org in
-`~/.fob-stm/config.yml` (mode 0600). The base URL is origin-only; the client adds `/api/v1`.
-
-## CLI resources
-
-`config`, `accounts`, `transactions`, `statements` (uploaded files), `rules`, `reports`,
-`categories`, `entities` — full parity with the retired `fobs statements …` surface. Run
-`fob-stm <resource>` to see a resource's actions, or `fob-stm <resource> <action> --help`.
-
-## Status
-
-CLI at parity; client core complete. Remaining Phase 3 work: first-run config migration from
-`~/.fobs`, migrating worker consumers off `@fob/lib-worker-statements`, and deprecating it. See
-`docs/wip/cli-standards-and-wrappers.md` (this repo).
-
-## Test
+### Transactions
 
 ```bash
-npm install
-npm test
+fob-stm transactions list --account <id> --from 2026-01-01 --to 2026-03-31
+fob-stm transactions show <id>
 ```
+
+### Statements
+
+```bash
+fob-stm statements list
+fob-stm statements upload ./march-statement.pdf --account <id>
+fob-stm statements show <id>
+fob-stm statements download <id> --output ./statement.pdf
+fob-stm statements submit-password <id> --password ****   # for encrypted PDFs
+```
+
+### Rules, reports, categories, entities
+
+```bash
+fob-stm rules list
+fob-stm rules preview <id>
+fob-stm reports show <report> --from 2026-01-01 --to 2026-03-31
+fob-stm categories list
+fob-stm entities list
+```
+
+Run `fob-stm <resource>` to list a resource's actions.
+
+## Output
+
+Human-readable tables by default. Pass `--json` for machine-readable output; list commands also
+support `--format csv` and `--output <file>`. Data goes to stdout; hints and errors to stderr.
+
+## As a library
+
+```js
+import { fobStm } from '@finopsbricks/fob-stm';
+
+const stm = fobStm({
+  api_key: 'fob_stm_…',
+  api_secret: '…',
+  // api_url optional — defaults to https://statements.finopsbricks.com
+});
+
+const { data } = await stm.accounts.list({ category: 'bank' });
+const account = await stm.accounts.get(accountId);
+```
+
+Credentials are passed explicitly (never read from the environment), so one process can talk to
+multiple orgs by constructing a client per org. Namespaces: `accounts`, `statements`,
+`transactions`, `rules`, `reports`, `categories`, `entities`, plus `whoami()`.
+
+## License
+
+[Apache-2.0](./LICENSE) © FinOpsBricks

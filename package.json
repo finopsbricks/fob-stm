@@ -1,6 +1,6 @@
 {
-  "name": "@fob/stm",
-  "version": "0.2.1",
+  "name": "@finopsbricks/fob-stm",
+  "version": "0.3.0",
   "description": "Statements app client + fob-stm CLI (2-in-1). Import the client in workers, or use the CLI.",
   "type": "module",
   "main": "src/index.js",
@@ -16,7 +16,8 @@
     "src",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "start": "node bin/cli.js",
@@ -26,11 +27,22 @@
   },
   "keywords": [
     "statements",
+    "bank-statements",
     "api-client",
     "cli",
-    "finops"
+    "finops",
+    "finopsbricks"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/finopsbricks/fob-stm.git"
+  },
+  "homepage": "https://github.com/finopsbricks/fob-stm#readme",
+  "bugs": "https://github.com/finopsbricks/fob-stm/issues",
   "dependencies": {
     "@inquirer/prompts": "^7.10.1",
     "js-yaml": "^4.1.0",
