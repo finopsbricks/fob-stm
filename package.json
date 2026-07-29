@@ -11,6 +11,13 @@
   "bin": {
     "fob-stm": "./bin/cli.js"
   },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node bin/cli.js",
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
