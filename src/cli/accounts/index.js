@@ -2,7 +2,7 @@
  * Subtree builder for `fob-stm accounts <action>`.
  */
 
-import { safe, paginationOptions } from '../_helpers.js';
+import { safe, paginationOptions, localOptions } from '../_helpers.js';
 
 import { listAccountsHandler } from './list.js';
 import { showAccountHandler } from './show.js';
@@ -17,7 +17,7 @@ import { removeIdentifierHandler } from './remove-identifier.js';
 import { recalculateOpeningBalanceHandler } from './recalculate-opening-balance.js';
 
 function accountFieldOptions(yargs) {
-  return yargs
+  return localOptions(yargs)
     .option('category', { describe: 'Account category', type: 'string', choices: ['bank', 'credit_card'] })
     .option('currency', { describe: 'Currency code (e.g. INR, USD)', type: 'string' })
     .option('acc-no', { describe: 'Account number', type: 'string' })
@@ -75,8 +75,7 @@ export function buildAccountsSubcommands(yargs) {
       'show <id>',
       'Show an account by ID',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(showAccountHandler),
     )
@@ -84,12 +83,14 @@ export function buildAccountsSubcommands(yargs) {
       'balance <id> [yyyy-mm-dd]',
       "Show an account's computed balance as of a date (defaults to today)",
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
-          .positional('yyyy-mm-dd', {
-            describe: 'As-of date; defaults to today (local TZ)',
-            type: 'string',
-          })
+        localOptions(
+          yargs
+            .positional('id', { describe: 'Account ID', type: 'string' })
+            .positional('yyyy-mm-dd', {
+              describe: 'As-of date; defaults to today (local TZ)',
+              type: 'string',
+            }),
+        )
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(balanceAccountHandler),
     )
@@ -104,8 +105,7 @@ export function buildAccountsSubcommands(yargs) {
       'update <id>',
       'Update account fields (only passed flags are changed)',
       (yargs) =>
-        accountFieldOptions(yargs)
-          .positional('id', { describe: 'Account ID', type: 'string' })
+        accountFieldOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
           .option('name', { describe: 'Account name', type: 'string' }),
       safe(updateAccountHandler),
     )
@@ -113,8 +113,7 @@ export function buildAccountsSubcommands(yargs) {
       'retire <id>',
       'Retire an account (closed but real; hidden from live UI, still counted in reports)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(retireAccountHandler),
     )
@@ -122,8 +121,7 @@ export function buildAccountsSubcommands(yargs) {
       'quarantine <id>',
       'Quarantine an account (suspect data; hidden from live UI and excluded from reports)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(quarantineAccountHandler),
     )
@@ -131,8 +129,7 @@ export function buildAccountsSubcommands(yargs) {
       'reactivate <id>',
       'Reactivate an account (set status back to active)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(reactivateAccountHandler),
     )
@@ -140,8 +137,7 @@ export function buildAccountsSubcommands(yargs) {
       'delete <id>',
       'Permanently delete an account (fails if it still has linked transactions)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
           .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' }),
       safe(deleteAccountHandler),
     )
@@ -149,9 +145,11 @@ export function buildAccountsSubcommands(yargs) {
       'merge <retain-id> <delete-id>',
       "Merge <delete-id> into <retain-id> (destructive — deletes <delete-id>'s transactions and the account itself)",
       (yargs) =>
-        yargs
-          .positional('retain-id', { describe: 'Account ID to keep', type: 'string' })
-          .positional('delete-id', { describe: 'Account ID to merge away and delete', type: 'string' })
+        localOptions(
+          yargs
+            .positional('retain-id', { describe: 'Account ID to keep', type: 'string' })
+            .positional('delete-id', { describe: 'Account ID to merge away and delete', type: 'string' }),
+        )
           .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' })
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(mergeAccountsHandler),
@@ -160,9 +158,11 @@ export function buildAccountsSubcommands(yargs) {
       'add-identifier <id> <value>',
       "Add a value to the account's statement-matching identifier list",
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
-          .positional('value', { describe: 'Identifier value to add', type: 'string' })
+        localOptions(
+          yargs
+            .positional('id', { describe: 'Account ID', type: 'string' })
+            .positional('value', { describe: 'Identifier value to add', type: 'string' }),
+        )
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(addIdentifierHandler),
     )
@@ -170,9 +170,11 @@ export function buildAccountsSubcommands(yargs) {
       'remove-identifier <id> <value>',
       "Remove a value from the account's statement-matching identifier list",
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
-          .positional('value', { describe: 'Identifier value to remove', type: 'string' })
+        localOptions(
+          yargs
+            .positional('id', { describe: 'Account ID', type: 'string' })
+            .positional('value', { describe: 'Identifier value to remove', type: 'string' }),
+        )
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(removeIdentifierHandler),
     )
@@ -180,8 +182,7 @@ export function buildAccountsSubcommands(yargs) {
       'recalculate-opening-balance <id>',
       'Recompute opening balance/date from the earliest statement on file',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Account ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(recalculateOpeningBalanceHandler),
     )

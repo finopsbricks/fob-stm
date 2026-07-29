@@ -1,4 +1,4 @@
-import { safe, paginationOptions } from '../_helpers.js';
+import { safe, paginationOptions, localOptions } from '../_helpers.js';
 import { listStatementsHandler } from './list.js';
 import { uploadStatementHandler } from './upload.js';
 import { showStatementHandler } from './show.js';
@@ -88,8 +88,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'upload <file>',
       'Upload a statement file (pdf/csv/xls/xlsx) and start processing',
       (yargs) =>
-        yargs
-          .positional('file', { describe: 'Path to the statement file', type: 'string' })
+        localOptions(yargs.positional('file', { describe: 'Path to the statement file', type: 'string' }))
           .option('account', {
             describe: 'Pre-assign to an account ID (skips auto-detection)',
             type: 'string',
@@ -105,8 +104,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'show <id>',
       'Show a statement by ID',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON (includes parsed_data / raw_data)', type: 'boolean' }),
       safe(showStatementHandler),
     )
@@ -114,8 +112,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'download <id>',
       'Download the original uploaded file for a statement',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('output', {
             describe:
               'Where to write the file (default: server-provided filename in cwd)',
@@ -136,8 +133,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'extracted <id>',
       'Show the data extracted from a statement (parsed_data: metadata + transactions)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('limit', {
             describe: 'Max transactions to print in table (default 20)',
             type: 'number',
@@ -153,9 +149,11 @@ export function buildStatementsResourceSubcommands(yargs) {
       'rename <id> <name>',
       'Rename a statement (update file_name)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
-          .positional('name', { describe: 'New file name', type: 'string' })
+        localOptions(
+          yargs
+            .positional('id', { describe: 'Statement ID', type: 'string' })
+            .positional('name', { describe: 'New file name', type: 'string' }),
+        )
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(renameStatementHandler),
     )
@@ -163,8 +161,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'update <id>',
       'Update period dates, balances, or review status',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('period-start', { describe: 'Period start (YYYY-MM-DD)', type: 'string' })
           .option('period-end', { describe: 'Period end (YYYY-MM-DD)', type: 'string' })
           .option('opening', {
@@ -186,8 +183,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'archive <id>',
       'Archive a statement (hide from default list; reversible)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(archiveStatementHandler),
     )
@@ -195,8 +191,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'unarchive <id>',
       'Unarchive a statement',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(unarchiveStatementHandler),
     )
@@ -204,8 +199,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'retry <id>',
       'Re-run statement processing from the read_file step',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(retryStatementHandler),
     )
@@ -213,8 +207,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'submit-password <id>',
       'Supply the password for an encrypted PDF/XLSX statement and re-process',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('password', {
             describe: 'The file password (validated server-side before it is stored)',
             type: 'string',
@@ -227,9 +220,11 @@ export function buildStatementsResourceSubcommands(yargs) {
       'submit-account-number <id> <acc-no>',
       'Supply the account number for a statement that failed account matching',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
-          .positional('acc-no', { describe: 'Account number to inject', type: 'string' })
+        localOptions(
+          yargs
+            .positional('id', { describe: 'Statement ID', type: 'string' })
+            .positional('acc-no', { describe: 'Account number to inject', type: 'string' }),
+        )
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(submitAccountNumberHandler),
     )
@@ -237,8 +232,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'delete <id>',
       'Permanently delete a statement (fails if it still has linked transactions)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' }),
       safe(deleteStatementHandler),
     )
@@ -246,8 +240,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'delete-transactions <id>',
       'Delete all transactions linked to a statement (statement itself stays)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Statement ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Statement ID', type: 'string' }))
           .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' })
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(deleteStatementTransactionsHandler),

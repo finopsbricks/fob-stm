@@ -1,4 +1,4 @@
-import { safe, paginationOptions } from '../_helpers.js';
+import { safe, paginationOptions, localOptions } from '../_helpers.js';
 import { OPERATORS } from './_rule-args.js';
 import { listRulesHandler } from './list.js';
 import { showRuleHandler } from './show.js';
@@ -70,8 +70,7 @@ export function buildRulesSubcommands(yargs) {
       'show <id>',
       'Show a rule by ID',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Rule ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(showRuleHandler),
     )
@@ -79,8 +78,7 @@ export function buildRulesSubcommands(yargs) {
       'create <name>',
       'Create a categorization rule (auto-applies to future uploads)',
       (yargs) =>
-        yargs
-          .positional('name', { describe: 'Rule name', type: 'string' })
+        localOptions(yargs.positional('name', { describe: 'Rule name', type: 'string' }))
           .option('match', {
             describe:
               `Condition "field:operator:value" (repeatable; ALL must match). Operators: ${OPERATORS.join(', ')}`,
@@ -106,8 +104,7 @@ export function buildRulesSubcommands(yargs) {
       'edit <id>',
       'Edit a rule (--match/--set replace conditions/actions wholesale)',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Rule ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
           .option('name', { describe: 'New name', type: 'string' })
           .option('priority', { describe: 'New priority', type: 'number' })
           .option('enable', { describe: 'Enable the rule', type: 'boolean' })
@@ -130,8 +127,7 @@ export function buildRulesSubcommands(yargs) {
       'run <id>',
       "Apply a rule to existing transactions (default: only type='unknown')",
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Rule ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
           .option('force-all', {
             describe: 'Apply to all matching transactions, not just type=unknown',
             type: 'boolean',
@@ -143,8 +139,7 @@ export function buildRulesSubcommands(yargs) {
       'preview <id>',
       "Dry-run a rule — see which transactions it would match, without applying it (default: only type='unknown')",
       (yargs) =>
-        paginationOptions(yargs)
-          .positional('id', { describe: 'Rule ID', type: 'string' })
+        paginationOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
           .option('force-all', {
             describe: 'Preview against all matching transactions, not just type=unknown',
             type: 'boolean',
@@ -155,8 +150,7 @@ export function buildRulesSubcommands(yargs) {
       'delete <id>',
       'Permanently delete a rule',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Rule ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
           .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' }),
       safe(deleteRuleHandler),
     )

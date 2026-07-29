@@ -1,4 +1,4 @@
-import { safe, paginationOptions } from '../_helpers.js';
+import { safe, paginationOptions, localOptions } from '../_helpers.js';
 
 import { listTransactionsHandler } from './list.js';
 import { showTransactionHandler } from './show.js';
@@ -75,8 +75,7 @@ export function buildTransactionsSubcommands(yargs) {
       'show <id>',
       'Show a transaction by ID',
       (yargs) =>
-        yargs
-          .positional('id', { describe: 'Transaction ID', type: 'string' })
+        localOptions(yargs.positional('id', { describe: 'Transaction ID', type: 'string' }))
           .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
       safe(showTransactionHandler),
     )
@@ -84,11 +83,12 @@ export function buildTransactionsSubcommands(yargs) {
       'edit <id>',
       'Edit transaction metadata. Pass comma-separated IDs to bulk-edit.',
       (yargs) =>
-        yargs
-          .positional('id', {
+        localOptions(
+          yargs.positional('id', {
             describe: 'Transaction ID(s), comma-separated for bulk edit',
             type: 'string',
-          })
+          }),
+        )
           .option('entity', { describe: 'Set entity (counterparty). Pass "" to clear.', type: 'string' })
           .option('category', { describe: 'Set category. Pass "" to clear.', type: 'string' })
           .option('type', {

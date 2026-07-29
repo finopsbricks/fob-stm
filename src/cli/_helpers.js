@@ -21,9 +21,20 @@ export function safe(handler) {
   };
 }
 
+/**
+ * Register a command's own "Options:" group so it renders *above* the inherited
+ * "Global Options:". yargs merges an instance's groups before the preserved
+ * global ones, and otherwise materialises the default "Options:" group last — so
+ * pre-creating it on the command instance is what fixes the order. Call at the
+ * start of a command's builder; ungrouped options then fall into this group.
+ */
+export function localOptions(yargs) {
+  return yargs.group([], 'Options:');
+}
+
 /** Standard pagination + JSON output options for list commands. */
 export function paginationOptions(yargs) {
-  return yargs
+  return localOptions(yargs)
     .option('page', { describe: 'Page number', type: 'number', default: 1 })
     .option('limit', { describe: 'Page size (max 500)', type: 'number', default: 100 })
     .option('json', { describe: 'Output raw JSON', type: 'boolean' });

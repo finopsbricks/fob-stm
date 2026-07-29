@@ -1,8 +1,8 @@
-import { safe } from '../_helpers.js';
+import { safe, localOptions } from '../_helpers.js';
 import { listCategoriesHandler } from './list.js';
 
 function categoriesEntitiesListOptions(yargs) {
-  return yargs
+  return localOptions(yargs)
     .option('from', { describe: 'Start date (YYYY-MM-DD), required', type: 'string', demandOption: true })
     .option('to', { describe: 'End date (YYYY-MM-DD), required', type: 'string', demandOption: true })
     .option('accounts', { describe: 'Filter to account IDs (comma-separated)', type: 'string' })

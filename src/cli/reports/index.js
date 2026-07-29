@@ -1,4 +1,4 @@
-import { safe } from '../_helpers.js';
+import { safe, localOptions } from '../_helpers.js';
 import { showReportHandler, REPORT_NAMES } from './show.js';
 
 export function buildReportsSubcommands(yargs) {
@@ -8,8 +8,7 @@ export function buildReportsSubcommands(yargs) {
       'show <name>',
       'Compute and print a report (JSON output)',
       (yargs) =>
-        yargs
-          .positional('name', { describe: 'Report name', type: 'string', choices: REPORT_NAMES })
+        localOptions(yargs.positional('name', { describe: 'Report name', type: 'string', choices: REPORT_NAMES }))
           .option('from', { describe: 'Start date (YYYY-MM-DD)', type: 'string' })
           .option('to', { describe: 'End date (YYYY-MM-DD)', type: 'string' })
           .option('group-by', {
