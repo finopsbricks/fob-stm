@@ -17,10 +17,12 @@ npm install -g @finopsbricks/fob-stm
 
    ```bash
    fob-stm config profiles add myorg \
-     --api-url https://statements.finopsbricks.com/ \
      --api-key fob_stm_xxxxxxxxxxxx \
      --api-secret yyyyyyyyyyyyyyyy
    ```
+
+   `--api-url` is optional and defaults to `https://statements.finopsbricks.com`;
+   pass it only to target a different instance.
 
 3. Confirm it works:
 
