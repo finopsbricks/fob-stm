@@ -31,6 +31,7 @@ export async function showTransactionHandler(argv) {
   console.log(formatField('Entity', t.entity, w));
   console.log(formatField('Category', t.category, w));
   console.log(formatField('Account', t.account_name ?? t.account, w));
+  console.log(formatField('Currency', t.account_currency ?? 'INR', w));
   console.log(formatField('Type', t.type, w));
   console.log(formatField('PO', t.po, w));
   console.log(formatField('Comments', t.comments, w));

@@ -30,7 +30,7 @@ const PUBLIC_FIELDS = [
   'period_start', 'period_end', 'opening_balance', 'closing_balance',
   'data_source', 'review',
   // Alias keys (CLI-only; not part of the API fields vocabulary).
-  'account',
+  'account', 'currency',
 ];
 
 // Default printed columns when --fields is not specified.
@@ -57,6 +57,7 @@ const COLUMNS = {
   account:         { header: 'ACCOUNT',     align: 'left',  render: (s) => (s.account_name ?? s.account_id ?? '').slice(0, 24), raw: (s) => s.account_name ?? s.account_id },
   account_id:      { header: 'ACCOUNT ID',  align: 'left',  render: (s) => s.account_id ?? '',                       raw: (s) => s.account_id },
   account_name:    { header: 'ACCOUNT',     align: 'left',  render: (s) => s.account_name ?? '',                     raw: (s) => s.account_name },
+  currency:        { header: 'CCY',         align: 'left',  render: (s) => s.account_currency ?? 'INR',              raw: (s) => s.account_currency ?? 'INR' },
   is_archived:     { header: 'ARCHIVED',    align: 'left',  render: (s) => (s.is_archived ? 'yes' : ''),             raw: (s) => s.is_archived },
   created_at:      { header: 'CREATED',     align: 'left',  render: (s) => formatDate(s.created_at),                 raw: (s) => s.created_at },
   period_start:    { header: 'PERIOD START',align: 'left',  render: (s) => s.period_start ?? '',                     raw: (s) => s.period_start },
@@ -77,6 +78,7 @@ const selector = buildColumnSelector({
 // both account_id and account_name from the API to render `account_name ?? account_id`.
 const FIELDS_TO_API = {
   account: ['account_id', 'account_name'],
+  currency: ['account_currency'],
 };
 
 function translateFieldsForApi(cliFields) {

@@ -24,12 +24,12 @@ function scaleTxn(t) {
 // Public fields the API exposes (mirrors statements app PUBLIC_FIELDS).
 const PUBLIC_FIELDS = [
   'id', 'date', 'particulars', 'inflow', 'outflow', 'balance',
-  'entity', 'category', 'po', 'comments', 'type', 'account', 'statement',
+  'entity', 'category', 'po', 'comments', 'type', 'account', 'currency', 'statement',
 ];
 
 // Default printed columns when --fields is not specified.
 const DEFAULT_FIELDS = [
-  'id', 'date', 'account', 'particulars', 'type', 'category', 'entity', 'inflow', 'outflow',
+  'id', 'date', 'account', 'particulars', 'type', 'category', 'entity', 'currency', 'inflow', 'outflow',
 ];
 
 const COLUMNS = {
@@ -45,8 +45,25 @@ const COLUMNS = {
   po:          { header: 'PO',          align: 'left',  render: (t) => t.po ?? '',                               raw: (t) => t.po },
   comments:    { header: 'COMMENTS',    align: 'left',  render: (t) => (t.comments ?? '').slice(0, 30),          raw: (t) => t.comments },
   account:     { header: 'ACCOUNT',     align: 'left',  render: (t) => t.account_name ?? t.account_id ?? '',     raw: (t) => t.account_name ?? t.account_id },
+  currency:    { header: 'CCY',         align: 'left',  render: (t) => t.account_currency ?? 'INR',              raw: (t) => t.account_currency ?? 'INR' },
   statement:   { header: 'STATEMENT',   align: 'left',  render: (t) => t.statement ?? '',                        raw: (t) => t.statement },
 };
+
+// CLI field key → API field name(s). The CLI exposes friendly keys (`account`,
+// `currency`) that map onto the API's `account_id`/`account_name`/`account_currency`.
+const FIELDS_TO_API = {
+  account: ['account_id', 'account_name'],
+  currency: ['account_currency'],
+};
+
+function translateFieldsForApi(cliFields) {
+  if (!cliFields) return undefined;
+  const out = new Set();
+  for (const f of cliFields.split(',').map((s) => s.trim()).filter(Boolean)) {
+    for (const m of FIELDS_TO_API[f] ?? [f]) out.add(m);
+  }
+  return [...out].join(',');
+}
 
 const selector = buildColumnSelector({
   columns: COLUMNS,
@@ -65,8 +82,9 @@ function normalizeSort(value) {
 
 function buildSearchParams(argv) {
   return {
-    fields: argv.fields,
+    fields: translateFieldsForApi(argv.fields),
     accounts: argv.account,
+    currency: argv.currency,
     statement: argv.statement,
     date_from: argv.from,
     date_to: argv.to,
@@ -91,17 +109,23 @@ function emit(text, outputPath) {
   }
 }
 
+// Group totals by currency — money is never summed across currencies (a
+// transaction's currency comes from its account, defaulting to INR). Returns an
+// object keyed by currency code: { INR: { count, inflow, outflow, net }, ... }.
 function computeTotals(txns) {
-  let inflow = 0;
-  let outflow = 0;
+  const by = {};
   for (const t of txns) {
-    inflow += Number(t.inflow) || 0;
-    outflow += Number(t.outflow) || 0;
+    const cur = t.account_currency || 'INR';
+    const b = by[cur] ?? (by[cur] = { count: 0, inflow: 0, outflow: 0 });
+    b.count += 1;
+    b.inflow += Number(t.inflow) || 0;
+    b.outflow += Number(t.outflow) || 0;
   }
-  return { count: txns.length, inflow, outflow, net: inflow - outflow };
+  for (const cur of Object.keys(by)) by[cur].net = by[cur].inflow - by[cur].outflow;
+  return by;
 }
 
-function renderTotals(totals, truncated) {
+function renderTotals(byCurrency, truncated) {
   const fmt = (n) =>
     amountMode() === 'raw'
       ? Number(n).toLocaleString('en-US')
@@ -109,18 +133,25 @@ function renderTotals(totals, truncated) {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         });
-  const inflow = fmt(totals.inflow);
-  const outflow = fmt(totals.outflow);
-  const net = fmt(totals.net);
-  const width = Math.max(inflow.length, outflow.length, net.length);
-  const count = `${totals.count} transaction${totals.count === 1 ? '' : 's'}${truncated ? ', truncated' : ''}`;
-  return [
-    '',
-    `TOTALS (${count}):`,
-    `  Inflow:   ${inflow.padStart(width)}`,
-    `  Outflow:  ${outflow.padStart(width)}`,
-    `  Net:      ${net.padStart(width)}`,
-  ].join('\n');
+  const blocks = [];
+  for (const cur of Object.keys(byCurrency).sort()) {
+    const totals = byCurrency[cur];
+    const inflow = fmt(totals.inflow);
+    const outflow = fmt(totals.outflow);
+    const net = fmt(totals.net);
+    const width = Math.max(inflow.length, outflow.length, net.length);
+    const count = `${totals.count} transaction${totals.count === 1 ? '' : 's'}${truncated ? ', truncated' : ''}`;
+    blocks.push(
+      [
+        '',
+        `TOTALS ${cur} (${count}):`,
+        `  Inflow:   ${inflow.padStart(width)}`,
+        `  Outflow:  ${outflow.padStart(width)}`,
+        `  Net:      ${net.padStart(width)}`,
+      ].join('\n'),
+    );
+  }
+  return blocks.join('\n');
 }
 
 export async function listTransactionsHandler(argv) {
@@ -140,12 +171,18 @@ export async function listTransactionsHandler(argv) {
     if (format === 'json') {
       const payload = { data: txns.map(scaleTxn) };
       if (totals) {
-        payload.totals = {
-          count: totals.count,
-          inflow: scaleMilliAmount(totals.inflow),
-          outflow: scaleMilliAmount(totals.outflow),
-          net: scaleMilliAmount(totals.net),
-        };
+        // Keyed by currency; never a cross-currency sum.
+        const by_currency = {};
+        for (const cur of Object.keys(totals)) {
+          const b = totals[cur];
+          by_currency[cur] = {
+            count: b.count,
+            inflow: scaleMilliAmount(b.inflow),
+            outflow: scaleMilliAmount(b.outflow),
+            net: scaleMilliAmount(b.net),
+          };
+        }
+        payload.totals = { by_currency };
       }
       emit(JSON.stringify(payload, null, 2), argv.output);
     } else if (format === 'csv') {

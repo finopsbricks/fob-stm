@@ -72,8 +72,13 @@ fob-stm accounts balance <id> 2026-03-31
 
 ```bash
 fob-stm transactions list --account <id> --from 2026-01-01 --to 2026-03-31
+fob-stm transactions list --currency USD           # filter by account currency
+fob-stm transactions list --totals                 # sums grouped by currency
 fob-stm transactions show <id>
 ```
+
+Each row shows a `CCY` column (the account's currency; transactions inherit it).
+`--totals` groups sums **by currency** — money is never summed across currencies.
 
 ### Statements
 

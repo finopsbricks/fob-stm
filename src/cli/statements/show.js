@@ -25,6 +25,7 @@ export async function showStatementHandler(argv) {
   console.log(formatField('ID', s.id, w));
   console.log(formatField('File', s.file_name, w));
   console.log(formatField('Account', s.account_name ?? s.account, w));
+  console.log(formatField('Currency', s.account_currency ?? 'INR', w));
   console.log(formatField('Period Start', s.period_start, w));
   console.log(formatField('Period End', s.period_end, w));
   console.log(formatField('Opening Balance', formatAmount(s.opening_balance), w));

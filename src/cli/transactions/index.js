@@ -16,6 +16,10 @@ export function buildTransactionsSubcommands(yargs) {
             describe: 'Filter by account ID(s), comma-separated for multiple',
             type: 'string',
           })
+          .option('currency', {
+            describe: 'Filter by account currency code (e.g. USD)',
+            type: 'string',
+          })
           .option('statement', {
             describe: 'Filter by statement ID(s), comma-separated for multiple',
             type: 'string',
@@ -53,7 +57,7 @@ export function buildTransactionsSubcommands(yargs) {
           })
           .option('fields', {
             describe:
-              'Columns to show, comma-separated (default: id,date,account,particulars,type,category,entity,inflow,outflow)',
+              'Columns to show, comma-separated (default: id,date,account,particulars,type,category,entity,currency,inflow,outflow)',
             type: 'string',
           })
           .option('format', {
@@ -66,7 +70,7 @@ export function buildTransactionsSubcommands(yargs) {
             type: 'string',
           })
           .option('totals', {
-            describe: 'Show count + inflow/outflow sums + net over all matching transactions',
+            describe: 'Show count + inflow/outflow sums + net, grouped by currency',
             type: 'boolean',
           }),
       safe(listTransactionsHandler),
