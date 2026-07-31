@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-31
+
+### Added
+- `getting-started` command that prints an orientation guide tailored for LLM agents.
+- `amount-display` setting to render monetary amounts as actual values instead of raw
+  milli-units across statements and transactions output.
+
+### Changed
+- `--api-url` is now optional and defaults to the hosted origin, so the flag only needs
+  to be set when targeting a non-default deployment.
+
 ## [0.3.0] - 2026-07-29
 
 First public release, published to npm as `@finopsbricks/fob-stm`.
