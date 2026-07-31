@@ -30,6 +30,10 @@ npm install -g @finopsbricks/fob-stm
    fob-stm config profiles current
    ```
 
+Run `fob-stm getting-started` at any time for these steps in-band — handy when an
+automated agent is driving the CLI. It detects existing profiles and tells you to
+skip setup when one is already configured.
+
 ## Usage
 
 ```

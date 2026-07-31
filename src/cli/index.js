@@ -10,6 +10,8 @@
 import yargs from 'yargs';
 
 import { setOrgOverride } from './config-store.js';
+import { safe } from './_helpers.js';
+import { gettingStartedHandler } from './getting-started.js';
 import { buildConfigSubcommands } from './config/index.js';
 import { buildAccountsSubcommands } from './accounts/index.js';
 import { buildTransactionsSubcommands } from './transactions/index.js';
@@ -31,6 +33,7 @@ export function run(argv) {
     .middleware((argv) => {
       if (argv.profile) setOrgOverride(argv.profile);
     })
+    .command('getting-started', 'Print setup instructions (skips if a profile exists)', (y) => y, safe(gettingStartedHandler))
     .command('config <resource>', 'Manage credential profiles (alias: orgs)', buildConfigSubcommands)
     .command('accounts <action>', 'Query accounts', buildAccountsSubcommands)
     .command('transactions <action>', 'Query transactions', buildTransactionsSubcommands)

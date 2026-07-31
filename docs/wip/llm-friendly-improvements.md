@@ -1,6 +1,6 @@
 # LLM-Friendly CLI Improvements
 
-## Status: NOT STARTED
+## Status: IN PROGRESS (~55%)
 
 Three changes that make `fob-stm` easier for an LLM agent to drive on a user's
 behalf: a self-describing `getting-started` command, an optional `--api-url` that
@@ -118,18 +118,18 @@ per resource as part of the audit above.
 
 ## Implementation Phases
 
-### Phase 1: Optional --api-url ❌
-- [ ] Import `DEFAULT_API_URL` into `src/cli/config/index.js`
-- [ ] Drop `demandOption`, add `default: DEFAULT_API_URL`, update `describe`
-- [ ] Update README getting-started + add example
-- [ ] Test: `config profiles add` works without `--api-url`
+### Phase 1: Optional --api-url ✅
+- [x] Import `DEFAULT_API_URL` into `src/cli/config/index.js`
+- [x] Drop `demandOption`, add `default: DEFAULT_API_URL`, update `describe`
+- [x] Update README getting-started + add example
+- [x] Test: `config profiles add` works without `--api-url`
 
-### Phase 2: getting-started command ❌
-- [ ] Add `src/cli/getting-started.js` handler (print walkthrough)
-- [ ] Detect existing profiles; branch message (configured vs. not)
-- [ ] Register top-level command in `src/cli/index.js`
-- [ ] Reflect optional `--api-url` in printed text
-- [ ] Test: output with 0 profiles vs. ≥1 profile
+### Phase 2: getting-started command ✅
+- [x] Add `src/cli/getting-started.js` handler (print walkthrough)
+- [x] Detect existing profiles; branch message (configured vs. not)
+- [x] Register top-level command in `src/cli/index.js`
+- [x] Reflect optional `--api-url` in printed text
+- [x] Test: output with 0 profiles vs. ≥1 profile
 
 ### Phase 3: Amount-display toggle ❌
 - [ ] Audit every monetary field: milli-unit vs. already-decimal (resolve the
