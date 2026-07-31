@@ -102,6 +102,21 @@ Run `fob-stm <resource>` to list a resource's actions.
 Human-readable tables by default. Pass `--json` for machine-readable output; list commands also
 support `--format csv` and `--output <file>`. Data goes to stdout; hints and errors to stderr.
 
+### Amount display
+
+Transaction and statement amounts are stored server-side as integers scaled ×1000 (so `1,234.50`
+is `1234500`) to keep arithmetic exact. By default the CLI divides these back to actual decimal
+values in every view — including `--json` and CSV — so you never have to guess the scale factor:
+
+```bash
+fob-stm config settings list
+fob-stm config settings set amount-display raw     # emit the raw ×1000 integers instead
+fob-stm config settings set amount-display actual  # back to decimals (default)
+```
+
+`raw` mode is for callers that want the exact stored integers. Aggregate endpoints (categories,
+entities, accounts) already return decimals from the API and are unaffected by this setting.
+
 ## As a library
 
 ```js

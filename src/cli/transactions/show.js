@@ -1,6 +1,7 @@
 // @ts-check
 import { clientFor } from '../_helpers.js';
 import { formatField, formatDate, formatAmount } from '../utils/format.js';
+import { scaleMilliAmount } from '../utils/amounts.js';
 
 export async function showTransactionHandler(argv) {
   const stm = clientFor();
@@ -8,7 +9,10 @@ export async function showTransactionHandler(argv) {
   const t = await stm.transactions.get(id);
 
   if (argv.json) {
-    console.log(JSON.stringify(t, null, 2));
+    const scaled = t
+      ? { ...t, inflow: scaleMilliAmount(t.inflow), outflow: scaleMilliAmount(t.outflow), balance: scaleMilliAmount(t.balance) }
+      : t;
+    console.log(JSON.stringify(scaled, null, 2));
     return;
   }
 

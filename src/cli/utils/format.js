@@ -4,6 +4,8 @@
  * reference set (engineering-standards/cli/output-formatting.md).
  */
 
+import { amountMode } from './amounts.js';
+
 /**
  * Format a label: value field with aligned label.
  * "Name:      Acme Corp"
@@ -71,10 +73,14 @@ export function formatCurrency(value) {
 }
 
 /**
- * Format a monetary value stored as integer milli-units (× 1000).
+ * Format a monetary value stored as integer milli-units (× 1000) for table view.
+ * Honors the `amount_display` setting: `actual` (default) divides by 1000 and
+ * shows 2 decimals; `raw` shows the stored integer with thousands separators.
+ * Returns '' for null / undefined / 0.
  */
 export function formatAmount(milliUnits) {
   if (milliUnits == null || milliUnits === '' || Number(milliUnits) === 0) return '';
+  if (amountMode() === 'raw') return Number(milliUnits).toLocaleString('en-US');
   return formatCurrency(Number(milliUnits) / 1000);
 }
 

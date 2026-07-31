@@ -29,9 +29,13 @@ export function setOrgOverride(name) {
 export function loadConfig() {
   if (existsSync(CONFIG_PATH)) {
     const cfg = yaml.load(readFileSync(CONFIG_PATH, 'utf8')) || {};
-    return { current_org: cfg.current_org ?? null, orgs: cfg.orgs ?? {} };
+    return {
+      current_org: cfg.current_org ?? null,
+      orgs: cfg.orgs ?? {},
+      settings: cfg.settings ?? {},
+    };
   }
-  return { current_org: null, orgs: {} };
+  return { current_org: null, orgs: {}, settings: {} };
 }
 
 export function saveConfig(cfg) {
@@ -110,6 +114,38 @@ export function setProfileIdentity(name, { org_id, org_slug, org_name } = {}) {
   cfg.orgs[name] = { ...cfg.orgs[name], org_id, org_slug, org_name };
   saveConfig(cfg);
   return cfg.orgs[name];
+}
+
+/** Valid values for the `amount_display` setting. */
+export const AMOUNT_DISPLAY_MODES = ['actual', 'raw'];
+
+/**
+ * How monetary values from milli-unit endpoints (transactions, statements) are
+ * shown. `actual` (default) divides the stored ×1000 integer down to human
+ * decimals in every view; `raw` passes the integer through untouched. Other
+ * endpoints already return decimals from the API and are unaffected either way.
+ * @returns {'actual'|'raw'}
+ */
+export function getAmountDisplay() {
+  const cfg = loadConfig();
+  const v = cfg.settings?.amount_display;
+  return AMOUNT_DISPLAY_MODES.includes(v) ? v : 'actual';
+}
+
+/** Persist the `amount_display` setting. Throws on an unknown mode. */
+export function setAmountDisplay(mode) {
+  if (!AMOUNT_DISPLAY_MODES.includes(mode)) {
+    throw new Error(`amount-display must be one of: ${AMOUNT_DISPLAY_MODES.join(', ')} (got '${mode}')`);
+  }
+  const cfg = loadConfig();
+  cfg.settings = { ...cfg.settings, amount_display: mode };
+  saveConfig(cfg);
+  return cfg.settings;
+}
+
+/** Non-secret snapshot of all settings, with defaults applied. Powers `config settings list`. */
+export function listSettings() {
+  return { amount_display: getAmountDisplay() };
 }
 
 /**

@@ -11,6 +11,17 @@ import {
   formatDate,
 } from '../utils/format.js';
 import { buildColumnSelector, parseArchived } from '../utils/list.js';
+import { scaleMilliAmount } from '../utils/amounts.js';
+
+// Milli-unit fields on a statement that the amount-display setting governs.
+const MONEY_FIELDS = ['opening_balance', 'closing_balance'];
+
+/** Scale a statement's milli-unit balance fields for machine output (JSON). */
+function scaleStatement(s) {
+  const out = { ...s };
+  for (const f of MONEY_FIELDS) if (out[f] != null) out[f] = scaleMilliAmount(out[f]);
+  return out;
+}
 
 // Public fields the API exposes (mirrors statements app PUBLIC_FIELDS).
 const PUBLIC_FIELDS = [
@@ -50,8 +61,8 @@ const COLUMNS = {
   created_at:      { header: 'CREATED',     align: 'left',  render: (s) => formatDate(s.created_at),                 raw: (s) => s.created_at },
   period_start:    { header: 'PERIOD START',align: 'left',  render: (s) => s.period_start ?? '',                     raw: (s) => s.period_start },
   period_end:      { header: 'PERIOD END',  align: 'left',  render: (s) => s.period_end ?? '',                       raw: (s) => s.period_end },
-  opening_balance: { header: 'OPENING',     align: 'right', render: (s) => formatAmount(s.opening_balance),          raw: (s) => s.opening_balance },
-  closing_balance: { header: 'CLOSING',     align: 'right', render: (s) => formatAmount(s.closing_balance),          raw: (s) => s.closing_balance },
+  opening_balance: { header: 'OPENING',     align: 'right', render: (s) => formatAmount(s.opening_balance),          raw: (s) => scaleMilliAmount(s.opening_balance) },
+  closing_balance: { header: 'CLOSING',     align: 'right', render: (s) => formatAmount(s.closing_balance),          raw: (s) => scaleMilliAmount(s.closing_balance) },
   data_source:     { header: 'SOURCE',      align: 'left',  render: (s) => s.data_source ? JSON.stringify(s.data_source).slice(0, 40) : '', raw: (s) => s.data_source },
   review:          { header: 'REVIEW',      align: 'left',  render: (s) => (s.review?.is_done ? 'done' : 'pending'), raw: (s) => s.review },
 };
@@ -143,7 +154,7 @@ export async function listStatementsHandler(argv) {
     const totals = argv.totals ? computeTotals(statements) : null;
 
     if (format === 'json') {
-      const payload = { data: statements };
+      const payload = { data: statements.map(scaleStatement) };
       if (totals) payload.totals = totals;
       emit(JSON.stringify(payload, null, 2), argv.output);
     } else if (format === 'csv') {

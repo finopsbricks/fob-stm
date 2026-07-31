@@ -17,7 +17,7 @@ const creds = (n) => ({ api_url: `https://${n}.example/`, api_key: `k_${n}`, api
 
 describe('config store (~/.fob/fob-stm/config.yml)', () => {
   it('starts empty when no config file exists', () => {
-    expect(loadConfig()).toEqual({ current_org: null, orgs: {} });
+    expect(loadConfig()).toEqual({ current_org: null, orgs: {}, settings: {} });
     expect(listOrgs()).toEqual({ current: null, orgs: [] });
   });
 

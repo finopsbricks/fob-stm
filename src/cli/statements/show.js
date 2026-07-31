@@ -1,6 +1,7 @@
 // @ts-check
 import { clientFor } from '../_helpers.js';
 import { formatField, formatDate, formatAmount, formatBytes } from '../utils/format.js';
+import { scaleMilliAmount } from '../utils/amounts.js';
 
 export async function showStatementHandler(argv) {
   const stm = clientFor();
@@ -8,7 +9,10 @@ export async function showStatementHandler(argv) {
   const s = await stm.statements.get(id);
 
   if (argv.json) {
-    console.log(JSON.stringify(s, null, 2));
+    const scaled = s
+      ? { ...s, opening_balance: scaleMilliAmount(s.opening_balance), closing_balance: scaleMilliAmount(s.closing_balance) }
+      : s;
+    console.log(JSON.stringify(scaled, null, 2));
     return;
   }
 

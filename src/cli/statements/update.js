@@ -1,6 +1,7 @@
 // @ts-check
 import { clientFor } from '../_helpers.js';
 import { formatField, formatAmount } from '../utils/format.js';
+import { scaleMilliAmount } from '../utils/amounts.js';
 
 function toMilliUnits(value, label) {
   if (value === undefined) return undefined;
@@ -33,7 +34,10 @@ export async function updateStatementHandler(argv) {
   const s = await stm.statements.update(id, body);
 
   if (argv.json) {
-    console.log(JSON.stringify(s, null, 2));
+    const scaled = s
+      ? { ...s, opening_balance: scaleMilliAmount(s.opening_balance), closing_balance: scaleMilliAmount(s.closing_balance) }
+      : s;
+    console.log(JSON.stringify(scaled, null, 2));
     return;
   }
 

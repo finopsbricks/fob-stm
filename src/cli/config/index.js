@@ -6,6 +6,35 @@ import { useConfigHandler } from './use.js';
 import { removeConfigHandler } from './remove.js';
 import { refreshConfigHandler } from './refresh.js';
 import { currentConfigHandler } from './current.js';
+import { listSettingsHandler, setSettingsHandler } from './settings.js';
+import { AMOUNT_DISPLAY_MODES } from '../config-store.js';
+
+/**
+ * Global (non-profile) CLI preferences. Kept a sibling namespace of `profiles`
+ * so `config` stays the umbrella: `fob-stm config settings <action>`.
+ */
+function buildSettingsSubcommands(yargs) {
+  return yargs
+    .usage('$0 config settings <action> [options]')
+    .command(
+      'list',
+      'Show current CLI settings',
+      (y) => localOptions(y).option('json', { describe: 'Output raw JSON', type: 'boolean' }),
+      safe(listSettingsHandler),
+    )
+    .command(
+      'set <key> <value>',
+      `Set a setting (e.g. amount-display ${AMOUNT_DISPLAY_MODES.join('|')})`,
+      (y) =>
+        localOptions(
+          y
+            .positional('key', { describe: 'Setting name (amount-display)', type: 'string' })
+            .positional('value', { describe: 'New value', type: 'string' }),
+        ),
+      safe(setSettingsHandler),
+    )
+    .demandCommand(1, 'Specify an action: list, set');
+}
 
 /**
  * The multi-tenant object is a "profile" — a named set of credentials. fob-stm's
@@ -72,5 +101,10 @@ export function buildConfigSubcommands(yargs) {
       'Manage credential profiles (alias: orgs)',
       buildProfilesSubcommands,
     )
-    .demandCommand(1, 'Specify a resource: profiles (alias: orgs)');
+    .command(
+      'settings',
+      'View or change global CLI settings',
+      buildSettingsSubcommands,
+    )
+    .demandCommand(1, 'Specify a resource: profiles (alias: orgs), settings');
 }

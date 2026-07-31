@@ -8,7 +8,18 @@ import {
   formatAmount,
   formatCsv,
 } from '../utils/format.js';
+import { scaleMilliAmount, amountMode } from '../utils/amounts.js';
 import { buildColumnSelector } from '../utils/list.js';
+
+// Milli-unit fields on a transaction that the amount-display setting governs.
+const MONEY_FIELDS = ['inflow', 'outflow', 'balance'];
+
+/** Scale a transaction's milli-unit fields for machine output (JSON). */
+function scaleTxn(t) {
+  const out = { ...t };
+  for (const f of MONEY_FIELDS) if (out[f] != null) out[f] = scaleMilliAmount(out[f]);
+  return out;
+}
 
 // Public fields the API exposes (mirrors statements app PUBLIC_FIELDS).
 const PUBLIC_FIELDS = [
@@ -25,9 +36,9 @@ const COLUMNS = {
   id:          { header: 'ID',          align: 'left',  render: (t) => String(t.id ?? ''),                       raw: (t) => t.id },
   date:        { header: 'DATE',        align: 'left',  render: (t) => t.date ?? '',                             raw: (t) => t.date },
   particulars: { header: 'PARTICULARS', align: 'left',  render: (t) => (t.particulars ?? '').slice(0, 50),       raw: (t) => t.particulars },
-  inflow:      { header: 'INFLOW',      align: 'right', render: (t) => formatAmount(t.inflow),                   raw: (t) => t.inflow },
-  outflow:     { header: 'OUTFLOW',     align: 'right', render: (t) => formatAmount(t.outflow),                  raw: (t) => t.outflow },
-  balance:     { header: 'BALANCE',     align: 'right', render: (t) => formatAmount(t.balance),                  raw: (t) => t.balance },
+  inflow:      { header: 'INFLOW',      align: 'right', render: (t) => formatAmount(t.inflow),                   raw: (t) => scaleMilliAmount(t.inflow) },
+  outflow:     { header: 'OUTFLOW',     align: 'right', render: (t) => formatAmount(t.outflow),                  raw: (t) => scaleMilliAmount(t.outflow) },
+  balance:     { header: 'BALANCE',     align: 'right', render: (t) => formatAmount(t.balance),                  raw: (t) => scaleMilliAmount(t.balance) },
   entity:      { header: 'ENTITY',      align: 'left',  render: (t) => t.entity ?? '',                           raw: (t) => t.entity },
   category:    { header: 'CATEGORY',    align: 'left',  render: (t) => t.category ?? '',                         raw: (t) => t.category },
   type:        { header: 'TYPE',        align: 'left',  render: (t) => t.type ?? '',                             raw: (t) => t.type },
@@ -91,10 +102,13 @@ function computeTotals(txns) {
 }
 
 function renderTotals(totals, truncated) {
-  const fmt = (n) => (n / 1000).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const fmt = (n) =>
+    amountMode() === 'raw'
+      ? Number(n).toLocaleString('en-US')
+      : (n / 1000).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
   const inflow = fmt(totals.inflow);
   const outflow = fmt(totals.outflow);
   const net = fmt(totals.net);
@@ -124,8 +138,15 @@ export async function listTransactionsHandler(argv) {
     const totals = argv.totals ? computeTotals(txns) : null;
 
     if (format === 'json') {
-      const payload = { data: txns };
-      if (totals) payload.totals = totals;
+      const payload = { data: txns.map(scaleTxn) };
+      if (totals) {
+        payload.totals = {
+          count: totals.count,
+          inflow: scaleMilliAmount(totals.inflow),
+          outflow: scaleMilliAmount(totals.outflow),
+          net: scaleMilliAmount(totals.net),
+        };
+      }
       emit(JSON.stringify(payload, null, 2), argv.output);
     } else if (format === 'csv') {
       emit(formatCsv(fields, selector.rawRows(txns, fields)), argv.output);

@@ -1,6 +1,33 @@
 // @ts-check
 import { clientFor } from '../_helpers.js';
 import { formatField, formatTable, formatAmount } from '../utils/format.js';
+import { scaleMilliAmount } from '../utils/amounts.js';
+
+/**
+ * Scale the milli-unit amounts inside parsed_data (metadata balances +
+ * per-transaction inflow/outflow/balance) so JSON output matches the scaled
+ * table view. Non-amount fields and unknown shapes pass through untouched.
+ */
+function scaleParsed(parsed) {
+  if (!parsed || typeof parsed !== 'object') return parsed;
+  const out = { ...parsed };
+  if (parsed.metadata && typeof parsed.metadata === 'object') {
+    out.metadata = {
+      ...parsed.metadata,
+      opening_balance: scaleMilliAmount(parsed.metadata.opening_balance),
+      closing_balance: scaleMilliAmount(parsed.metadata.closing_balance),
+    };
+  }
+  if (Array.isArray(parsed.transactions)) {
+    out.transactions = parsed.transactions.map((t) => ({
+      ...t,
+      inflow: scaleMilliAmount(t.inflow),
+      outflow: scaleMilliAmount(t.outflow),
+      balance: scaleMilliAmount(t.balance),
+    }));
+  }
+  return out;
+}
 
 export async function extractedStatementHandler(argv) {
   const stm = clientFor();
@@ -21,7 +48,7 @@ export async function extractedStatementHandler(argv) {
   }
 
   if (argv.json) {
-    console.log(JSON.stringify(s.parsed_data ?? null, null, 2));
+    console.log(JSON.stringify(scaleParsed(s.parsed_data ?? null), null, 2));
     return;
   }
 

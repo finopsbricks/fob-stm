@@ -1,6 +1,6 @@
 # LLM-Friendly CLI Improvements
 
-## Status: IN PROGRESS (~55%)
+## Status: COMPLETE
 
 Three changes that make `fob-stm` easier for an LLM agent to drive on a user's
 behalf: a self-describing `getting-started` command, an optional `--api-url` that
@@ -98,23 +98,51 @@ setting once and is used by every monetary render/raw path:
   `renderTotals` does `/ 1000` inline) must go through the same helper so `raw`
   mode is respected there too.
 
-**⚠️ Audit needed — scaling is currently inconsistent.** Not every resource
-treats amounts as milli-units today:
+**✅ Audit done (checked the statements app `api/v1/*/route.js`).** The API
+scales *per endpoint*, and the CLI already mirrors it correctly — there is **no
+pre-existing bug**:
 
-- Milli-unit (÷1000 via `formatAmount`): `transactions` (inflow/outflow/balance),
-  `statements` (opening/closing balance), `accounts balance`.
-- **No division** (`formatCurrency` used directly): `categories` &
-  `entities` aggregates (inflow/outflow), `accounts list` `opening_balance`.
+| Endpoint | API returns | CLI display | Correct |
+| --- | --- | --- | --- |
+| transactions (inflow/outflow/balance) | milli-units (raw) | `formatAmount` ÷1000 | ✅ |
+| statements (opening/closing balance) | milli-units (raw) | `formatAmount` ÷1000 | ✅ |
+| categories / entities (inflow/outflow) | decimal — API divides ÷1000 | `formatCurrency` | ✅ |
+| accounts `opening_balance` | decimal — API divides ÷1000 | `formatCurrency` | ✅ |
+| accounts balance (EOD) | decimal — API divides ÷1000 | local formatter | ✅ |
+| reports | milli-units (raw) | verbatim JSON dump | ⚠️ unscaled |
 
-Before wiring the toggle, determine per field whether the API returns milli-units
-or already-decimal values, so the toggle scales exactly the fields that are
-milli-unit encoded and doesn't double-scale the rest. This may reveal a
-pre-existing display bug (accounts/categories/entities under-scaling) worth fixing
-alongside — decide whether that's in-scope or a follow-up.
+**Consequence for the toggle — narrower scope than first assumed.** The
+milli-unit integers that confuse LLMs only reach output where the CLII itself
+converts milli→decimal, i.e. the **transactions** and **statements** paths that
+use `formatAmount`. Everywhere else the API already returns decimals, so those
+outputs are unaffected by the toggle (and must NOT be re-scaled).
 
-**Monetary vs. non-monetary fields.** Only amount fields get scaled — `count`,
-`id`, dates, names must pass through untouched. Enumerate the monetary field set
-per resource as part of the audit above.
+Semantics chosen: **`amount-display` governs the CLI's own milli-unit
+conversion** (the `formatAmount` paths).
+- `actual` (default): CLI divides milli-unit fields by 1000 → human decimals in
+  *every* view (table, JSON, CSV). This is a behavior change for
+  transactions/statements **JSON & CSV**, which currently emit the raw integer.
+- `raw`: CLI performs no conversion; transactions/statements amounts pass through
+  as the API's raw integers (old JSON/CSV behavior), and tables show the integer.
+
+**In scope (fields the CLI converts via `formatAmount`):**
+- `transactions` list/show: inflow, outflow, balance (+ inline `/1000` totals in
+  `list.js renderTotals`).
+- `statements` list/show/update/extracted: opening_balance, closing_balance,
+  and extracted-transaction inflow/outflow/balance.
+
+**Out of scope (do NOT scale — already decimal from the API):** categories,
+entities, accounts list/balance. Non-monetary fields (`count`, `id`, dates,
+names) are never touched.
+
+**Known limitation:** `reports show` dumps freeform API JSON that is milli-unit
+encoded but has no fixed amount-field schema, so the toggle can't cleanly scale
+it in v1. Leave reports as-is and note it; revisit if it proves a real pain
+point.
+
+**Input flags unaffected.** Write flags like `statements update
+--opening-balance 1234.50` always take actual currency units (they
+`Math.round(n*1000)` on the way in). The toggle is display-only.
 
 ## Implementation Phases
 
@@ -131,16 +159,26 @@ per resource as part of the audit above.
 - [x] Reflect optional `--api-url` in printed text
 - [x] Test: output with 0 profiles vs. ≥1 profile
 
-### Phase 3: Amount-display toggle ❌
-- [ ] Audit every monetary field: milli-unit vs. already-decimal (resolve the
-      formatAmount/formatCurrency inconsistency)
-- [ ] Add `settings` section + get/set helpers to `config-store.js`
-- [ ] Add `config settings` subcommands (list, set) in `config/index.js`
-- [ ] Central scaling helper honoring `amount_display`; default `actual`
-- [ ] Apply in `formatAmount`, `raw:` renderers, and inline totals divisions
-- [ ] Update README "Output" section documenting the setting
-- [ ] Tests: actual vs. raw across table / JSON / CSV; totals; non-monetary
-      fields untouched
+### Phase 3: Amount-display toggle ✅
+- [x] Audit every monetary field: milli-unit vs. already-decimal (found: no bug;
+      CLI already mirrors per-endpoint API scaling — see table above)
+- [x] Add `settings` section + get/set helpers to `config-store.js`
+      (`getAmountDisplay`/`setAmountDisplay`/`listSettings`)
+- [x] Add `config settings` subcommands (list, set) in `config/index.js`
+- [x] Central scaling helper honoring `amount_display`; default `actual`
+      (`src/cli/utils/amounts.js`, cached per-process)
+- [x] Apply in `formatAmount` (table), transactions & statements JSON/CSV `raw`
+      paths + full-object JSON dumps, extracted parsed_data, and inline totals
+- [x] Update README "Output" section documenting the setting
+- [x] Tests: actual vs. raw scaling + formatting; null/zero handling; validation
+
+Notes / deliberate scope limits:
+- `reports show` still dumps raw milli-unit JSON (no fixed amount schema) — left
+  as a known limitation.
+- `statements extracted --raw` (raw_data) is the parser's verbatim payload and is
+  intentionally NOT scaled.
+- Write flags (e.g. `statements update --opening`) always take actual currency
+  units; the toggle is display-only.
 
 ## Related Files
 
