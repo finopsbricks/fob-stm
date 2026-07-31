@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-31
+
+### Added
+- Currency support: transactions and statements now surface each row's account currency.
+  `transactions list` shows a `CCY` column by default; `transactions show`,
+  `statements show`, and `statements list` (via `--fields currency`) surface it too.
+- `--currency <code>` filter on `transactions list` (e.g. `--currency USD`), passed
+  through to the API.
+
+### Changed
+- `transactions list --totals` now groups sums **by currency** and never sums across
+  currencies. The `--totals` JSON output shape changed accordingly, from a flat
+  `{ count, inflow, outflow, net }` to `{ by_currency: { <code>: { count, inflow,
+  outflow, net } } }`; the table prints one `TOTALS <CCY>` block per currency.
+
 ## [0.4.0] - 2026-07-31
 
 ### Added
