@@ -1,12 +1,12 @@
 # Separate output format from fetch scope in `list` commands (`--json` shouldn't change pagination)
 
-## Status: NOT STARTED
+## Status: COMPLETE
 
 **Root issue:** `--json` is an *output-format* flag but currently also changes the *business logic* —
 it switches the fetch from one page to **all pages**. Format and fetch-scope are two orthogonal
 concerns that got collapsed into one flag, so the *same query* returns a *different result set*
 depending on how you ask it to be rendered. The visible symptom: `list` commands
-(`transactions`, `statements`, `accounts`, `rules`, `categories`, `entities`) accept `--limit`/`--page`
+(`transactions`, `statements`, `accounts`, `rules`) accept `--limit`/`--page`
 in every mode but **silently ignore them** under `--json`/`--csv`/`--totals` (which fetch all matching
 rows, capped at 15 000) — so a manual `--json --page N` loop returns the identical full set every page
 → infinite loop / duplicate processing. This work makes **scope** (`--limit`/`--page`/`--all`) and
@@ -34,7 +34,11 @@ rows" never terminates.
 - `src/http.js:245-248` (`apiGetAll`) — **explicitly `delete baseParams.page; delete baseParams.limit;`**
   and walks `page_context.has_more` at max page size, capping at `MAX_ALL_ROWS = 15000`.
 - The same `needsAllRows` pattern is duplicated in every other `*/list.js` handler (statements,
-  accounts, rules, categories, entities).
+  accounts, rules).
+
+`categories list`/`entities list` are unaffected — they're pure aggregation endpoints (grouped by
+category/entity over a required `--from`/`--to` range) with no `--limit`/`--page`/`getAll` at all
+(confirmed in `src/cli/categories/index.js`, `entities/index.js`). Nothing to fix there; excluded below.
 
 So the current contract bundles two orthogonal concerns into format flags:
 
@@ -82,34 +86,36 @@ list --totals                     → aggregate over the full matching set
 
 ## Implementation Phases
 
-### Phase 1: Orthogonal scope + format, shipped as one breaking change ❌
-- [ ] Add `--all` (fetch every page, capped at `MAX_ALL_ROWS`) — works with any format, decoupled from
+### Phase 1: Orthogonal scope + format, shipped as one breaking change ✅
+- [x] Add `--all` (fetch every page, capped at `MAX_ALL_ROWS`) — works with any format, decoupled from
       `--json`/`--csv`.
-- [ ] Remove the `needsAllRows` format-driven branch. `--json`/`--csv` with no scope flags → **one page**
+- [x] Remove the `needsAllRows` format-driven branch. `--json`/`--csv` with no scope flags → **one page**
       (page 1, default limit), same as `table`. `--all` is the only way to get every page.
-- [ ] `--limit`/`--page` always mean "fetch this page," in every format, with no exceptions.
-- [ ] `--totals` stays a full-set aggregation (already correct) — computed over `--all`'s fetch
+- [x] `--limit`/`--page` always mean "fetch this page," in every format, with no exceptions.
+- [x] `--totals` stays a full-set aggregation (already correct) — computed over `--all`'s fetch
       regardless of the scope flags a user passed alongside it.
-- [ ] Self-describing JSON envelope: `{ data, count, truncated }` (`truncated` only meaningful under
+- [x] Self-describing JSON envelope: `{ data, count, truncated }` (`truncated` only meaningful under
       `--all`), so consumers see scope/cap without scraping stderr.
-- [ ] Route all six list commands (`transactions`, `statements`, `accounts`, `rules`, `categories`,
-      `entities`) through a shared scope/format resolver in `src/cli/utils/list.js` — replace the
-      duplicated `needsAllRows`/`format` boilerplate in each handler, don't just fix it six times.
-- [ ] Update `--json`/`--all`/`--limit`/`--page` `describe` strings in each `src/cli/*/index.js` +
+- [x] Route all four affected list commands (`transactions`, `statements`, `accounts`, `rules`)
+      through a shared scope/format resolver in `src/cli/utils/list.js` — replace the
+      duplicated `needsAllRows`/`format` boilerplate in each handler, don't just fix it four times.
+- [x] Update `--json`/`--all`/`--limit`/`--page` `describe` strings in each `src/cli/*/index.js` +
       README to state the scope/format contract explicitly.
-- [ ] CHANGELOG entry marking this as a breaking change; bump version accordingly.
-- [ ] Sweep known internal consumers (ops/bookkeeping skills: `plan-jobs`, `resolve-statement-overlaps`,
+- [x] CHANGELOG entry marking this as a breaking change; bump version accordingly.
+- [x] Sweep known internal consumers (ops/bookkeeping skills: `plan-jobs`, `resolve-statement-overlaps`,
       `backup-app-state`) to pass `--all` where they need the full set — done as part of this change,
-      not a follow-up.
-- [ ] Tests: `--all` fetches all pages; bare `--json`/`--csv` return one page; `--json --limit N --page
-      M` returns that page; `--totals` still full-set; envelope has `count`/`truncated`.
+      not a follow-up. Also caught `identify-transfers`, a fourth consumer with the same pattern that
+      wasn't named when this WIP was written.
+- [x] Tests: `--all` fetches all pages; bare `--json`/`--csv` return one page; `--json --limit N --page
+      M` returns that page; `--totals` still full-set; envelope has `count`/`truncated`. Added coverage
+      for all four commands (`statements`/`rules` had no prior list tests at all).
 
 ## Related Files
 
 - `src/cli/transactions/list.js` — `needsAllRows` branch + JSON emit (`:160-215`)
-- `src/cli/statements/list.js`, `src/cli/accounts/list.js`, `src/cli/rules/list.js`,
-  `src/cli/categories/list.js`, `src/cli/entities/list.js` — same pattern
+- `src/cli/statements/list.js`, `src/cli/accounts/list.js`, `src/cli/rules/list.js` — same pattern
 - `src/http.js` — `apiGetAll` strips `page`/`limit`, caps at `MAX_ALL_ROWS` (`:238-275`)
+- `src/cli/categories/list.js`, `src/cli/entities/list.js` — out of scope, no pagination flags exist
 - `src/cli/utils/list.js` — home for the shared scope/format resolver (already houses
   `buildColumnSelector`, `parseStatus`, `parseArchived`)
 - `src/cli/*/index.js` — option `describe` strings ("csv/json auto-paginate (max 15000 rows)")
