@@ -40,10 +40,28 @@ describe('listAccountsHandler', () => {
     expect(out.stdout).toContain('(no accounts)');
   });
 
-  it('uses the auto-paginating accounts.getAll for --json', async () => {
+  it('bare --json fetches a single page via accounts.list (scope is independent of format)', async () => {
+    accounts.list.mockResolvedValue({ data: [{ id: '1', name: 'Acme' }], page_context: { has_more: false } });
+    await listAccountsHandler({ page: 1, limit: 100, json: true });
+    expect(accounts.list).toHaveBeenCalled();
+    expect(accounts.getAll).not.toHaveBeenCalled();
+    expect(out.stdout).toContain('"name": "Acme"');
+  });
+
+  it('uses the auto-paginating accounts.getAll for --all --json', async () => {
     accounts.getAll.mockResolvedValue([{ id: '1', name: 'Acme' }]);
-    await listAccountsHandler({ json: true });
+    await listAccountsHandler({ all: true, json: true });
     expect(accounts.getAll).toHaveBeenCalled();
     expect(out.stdout).toContain('"name": "Acme"');
+  });
+
+  it('--limit/--page under --json return that one page, not the full set', async () => {
+    accounts.list.mockResolvedValue({
+      data: [{ id: '2', name: 'Page 2 Acct' }],
+      page_context: { has_more: false },
+    });
+    await listAccountsHandler({ page: 2, limit: 500, json: true });
+    expect(accounts.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, limit: 500 }));
+    expect(accounts.getAll).not.toHaveBeenCalled();
   });
 });

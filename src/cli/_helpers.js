@@ -4,6 +4,7 @@
 
 import { resolveCredentials } from './config-store.js';
 import { fobStm } from '../index.js';
+import { MAX_ALL_ROWS } from '../http.js';
 
 /**
  * Wrap a handler so unexpected exceptions exit cleanly without a stack trace.
@@ -38,6 +39,19 @@ export function paginationOptions(yargs) {
     .option('page', { describe: 'Page number', type: 'number', default: 1 })
     .option('limit', { describe: 'Page size (max 500)', type: 'number', default: 100 })
     .option('json', { describe: 'Output raw JSON', type: 'boolean' });
+}
+
+/**
+ * Pagination options plus `--all`, for list commands backed by a resource with
+ * a `getAll()` (every matching row, capped at MAX_ALL_ROWS). Scope
+ * (`--all`/`--limit`/`--page`) is independent of output format — `--json`/
+ * `--csv` fetch exactly one page unless `--all` is also passed.
+ */
+export function listOptions(yargs) {
+  return paginationOptions(yargs).option('all', {
+    describe: `Fetch every matching row across all pages (capped at ${MAX_ALL_ROWS}), ignoring --limit/--page`,
+    type: 'boolean',
+  });
 }
 
 /**

@@ -1,4 +1,4 @@
-import { safe, paginationOptions, localOptions } from '../_helpers.js';
+import { safe, listOptions, localOptions } from '../_helpers.js';
 
 import { listTransactionsHandler } from './list.js';
 import { showTransactionHandler } from './show.js';
@@ -11,7 +11,7 @@ export function buildTransactionsSubcommands(yargs) {
       'list',
       'List transactions',
       (yargs) =>
-        paginationOptions(yargs)
+        listOptions(yargs)
           .option('account', {
             describe: 'Filter by account ID(s), comma-separated for multiple',
             type: 'string',
@@ -61,7 +61,7 @@ export function buildTransactionsSubcommands(yargs) {
             type: 'string',
           })
           .option('format', {
-            describe: 'Output format. csv/json auto-paginate (max 15000 rows)',
+            describe: 'Output format (renders whatever --limit/--page/--all selected)',
             type: 'string',
             choices: ['table', 'csv', 'json'],
           })

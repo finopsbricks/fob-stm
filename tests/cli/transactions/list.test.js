@@ -85,3 +85,55 @@ describe('listTransactionsHandler — currency', () => {
     expect(payload.totals.by_currency.USD).toMatchObject({ count: 1, inflow: 2260, net: 2260 });
   });
 });
+
+describe('listTransactionsHandler — scope/format orthogonality', () => {
+  let out;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    out = captureOutput();
+  });
+  afterEach(() => out.restore());
+
+  it('bare --json fetches a single page via transactions.list, not getAll', async () => {
+    transactions.list.mockResolvedValue({
+      data: [{ id: 't1', date: '2026-01-01', inflow: 100, outflow: 0 }],
+      page_context: { has_more: true, page: 1 },
+    });
+
+    await listTransactionsHandler({ page: 1, limit: 100, json: true });
+
+    expect(transactions.list).toHaveBeenCalled();
+    expect(transactions.getAll).not.toHaveBeenCalled();
+    const payload = JSON.parse(out.stdout);
+    expect(payload.data).toHaveLength(1);
+    expect(payload.count).toBe(1);
+    expect(payload.truncated).toBe(false);
+  });
+
+  it('--json --limit 500 --page 2 returns that page, not the identical full set (regression: the original bug)', async () => {
+    transactions.list.mockResolvedValue({
+      data: [{ id: 't501', date: '2026-01-02', inflow: 0, outflow: 50 }],
+      page_context: { has_more: false, page: 2 },
+    });
+
+    await listTransactionsHandler({ page: 2, limit: 500, json: true });
+
+    expect(transactions.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, limit: 500 }));
+    expect(transactions.getAll).not.toHaveBeenCalled();
+  });
+
+  it('--all --json fetches every page via transactions.getAll', async () => {
+    transactions.getAll.mockResolvedValue([
+      { id: 't1', date: '2026-01-01', inflow: 100, outflow: 0 },
+      { id: 't2', date: '2026-01-02', inflow: 0, outflow: 50 },
+    ]);
+
+    await listTransactionsHandler({ all: true, json: true });
+
+    expect(transactions.getAll).toHaveBeenCalled();
+    expect(transactions.list).not.toHaveBeenCalled();
+    const payload = JSON.parse(out.stdout);
+    expect(payload.data).toHaveLength(2);
+    expect(payload.count).toBe(2);
+  });
+});

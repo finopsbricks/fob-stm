@@ -1,4 +1,4 @@
-import { safe, paginationOptions, localOptions } from '../_helpers.js';
+import { safe, listOptions, localOptions } from '../_helpers.js';
 import { listStatementsHandler } from './list.js';
 import { uploadStatementHandler } from './upload.js';
 import { showStatementHandler } from './show.js';
@@ -20,7 +20,7 @@ export function buildStatementsResourceSubcommands(yargs) {
       'list',
       'List statements (uploaded files; default sort created_at DESC, override with --sort-by/--sort-order)',
       (yargs) =>
-        paginationOptions(yargs)
+        listOptions(yargs)
           .option('account', { describe: 'Filter by account ID', type: 'string' })
           .option('period-from', { describe: 'Period start (YYYY-MM-DD)', type: 'string' })
           .option('period-to', { describe: 'Period end (YYYY-MM-DD)', type: 'string' })
@@ -70,7 +70,7 @@ export function buildStatementsResourceSubcommands(yargs) {
             type: 'string',
           })
           .option('format', {
-            describe: 'Output format. csv/json auto-paginate (max 15000 rows)',
+            describe: 'Output format (renders whatever --limit/--page/--all selected)',
             type: 'string',
             choices: ['table', 'csv', 'json'],
           })

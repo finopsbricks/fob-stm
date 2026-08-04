@@ -4,12 +4,11 @@ import { MAX_ALL_ROWS } from '../../http.js';
 import { clientFor } from '../_helpers.js';
 import {
   formatTable,
-  formatPaginationHint,
   formatAmount,
   formatCsv,
 } from '../utils/format.js';
 import { scaleMilliAmount, amountMode } from '../utils/amounts.js';
-import { buildColumnSelector } from '../utils/list.js';
+import { buildColumnSelector, resolveListScope, formatScopeHint } from '../utils/list.js';
 
 // Milli-unit fields on a transaction that the amount-display setting governs.
 const MONEY_FIELDS = ['inflow', 'outflow', 'balance'];
@@ -159,81 +158,49 @@ export async function listTransactionsHandler(argv) {
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
 
-  // CSV/JSON/--totals all need every matching row, so auto-paginate up front.
-  const needsAllRows = format === 'csv' || format === 'json' || argv.totals;
-
-  if (needsAllRows) {
-    const txns = await stm.transactions.getAll(buildSearchParams(argv));
-    // getAll returns a plain array; hitting the cap is the truncation signal.
-    const truncated = txns.length >= MAX_ALL_ROWS;
-    const totals = argv.totals ? computeTotals(txns) : null;
-
-    if (format === 'json') {
-      const payload = { data: txns.map(scaleTxn) };
-      if (totals) {
-        // Keyed by currency; never a cross-currency sum.
-        const by_currency = {};
-        for (const cur of Object.keys(totals)) {
-          const b = totals[cur];
-          by_currency[cur] = {
-            count: b.count,
-            inflow: scaleMilliAmount(b.inflow),
-            outflow: scaleMilliAmount(b.outflow),
-            net: scaleMilliAmount(b.net),
-          };
-        }
-        payload.totals = { by_currency };
-      }
-      emit(JSON.stringify(payload, null, 2), argv.output);
-    } else if (format === 'csv') {
-      emit(formatCsv(fields, selector.rawRows(txns, fields)), argv.output);
-      if (totals) console.error(renderTotals(totals, truncated));
-    } else {
-      // table + --totals: show first --limit rows of the all-rows fetch, then totals
-      if (txns.length === 0) {
-        console.log('(no transactions)');
-      } else {
-        const start = ((argv.page ?? 1) - 1) * (argv.limit ?? 100);
-        const slice = txns.slice(start, start + (argv.limit ?? 100));
-        console.log(
-          formatTable(selector.headersFor(fields), selector.renderRows(slice, fields), {
-            align: selector.alignFor(fields),
-          }),
-        );
-        if (txns.length > slice.length) {
-          console.log(
-            `\n(showing ${slice.length} of ${txns.length}${truncated ? '+ (truncated)' : ''}; use --page ${(argv.page ?? 1) + 1} for more)`,
-          );
-        }
-      }
-      if (totals) console.log(renderTotals(totals, truncated));
-    }
-
-    if (truncated && format !== 'table') {
-      console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
-    }
-    return;
-  }
-
-  // table format, no totals — single page
-  const result = await stm.transactions.list({
-    page: argv.page,
-    limit: argv.limit,
-    ...buildSearchParams(argv),
+  const { rows: txns, allRows, truncated, pageContext } = await resolveListScope(argv, {
+    list: stm.transactions.list,
+    getAll: stm.transactions.getAll,
+    searchParams: buildSearchParams(argv),
   });
+  const totals = argv.totals ? computeTotals(allRows) : null;
 
-  const txns = result?.data ?? [];
-  if (txns.length === 0) {
-    console.log('(no transactions)');
-    return;
+  if (format === 'json') {
+    const payload = { data: txns.map(scaleTxn), count: txns.length, truncated };
+    if (totals) {
+      // Keyed by currency; never a cross-currency sum.
+      const by_currency = {};
+      for (const cur of Object.keys(totals)) {
+        const b = totals[cur];
+        by_currency[cur] = {
+          count: b.count,
+          inflow: scaleMilliAmount(b.inflow),
+          outflow: scaleMilliAmount(b.outflow),
+          net: scaleMilliAmount(b.net),
+        };
+      }
+      payload.totals = { by_currency };
+    }
+    emit(JSON.stringify(payload, null, 2), argv.output);
+  } else if (format === 'csv') {
+    emit(formatCsv(fields, selector.rawRows(txns, fields)), argv.output);
+    if (totals) console.error(renderTotals(totals, truncated));
+  } else {
+    if (txns.length === 0) {
+      console.log('(no transactions)');
+    } else {
+      console.log(
+        formatTable(selector.headersFor(fields), selector.renderRows(txns, fields), {
+          align: selector.alignFor(fields),
+        }),
+      );
+      const hint = formatScopeHint(argv, { rows: txns, allRows, pageContext });
+      if (hint) console.log(`\n${hint}`);
+    }
+    if (totals) console.log(renderTotals(totals, truncated));
   }
 
-  console.log(
-    formatTable(selector.headersFor(fields), selector.renderRows(txns, fields), {
-      align: selector.alignFor(fields),
-    }),
-  );
-
-  const hint = formatPaginationHint(result?.page_context);
-  if (hint) console.log(`\n${hint}`);
+  if (truncated) {
+    console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
+  }
 }

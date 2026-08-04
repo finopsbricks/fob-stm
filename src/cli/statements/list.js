@@ -4,13 +4,12 @@ import { MAX_ALL_ROWS } from '../../http.js';
 import { clientFor } from '../_helpers.js';
 import {
   formatTable,
-  formatPaginationHint,
   formatAmount,
   formatBytes,
   formatCsv,
   formatDate,
 } from '../utils/format.js';
-import { buildColumnSelector, parseArchived } from '../utils/list.js';
+import { buildColumnSelector, parseArchived, resolveListScope, formatScopeHint } from '../utils/list.js';
 import { scaleMilliAmount } from '../utils/amounts.js';
 
 // Milli-unit fields on a statement that the amount-display setting governs.
@@ -147,67 +146,39 @@ export async function listStatementsHandler(argv) {
   const stm = clientFor();
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
-  const needsAllRows = format === 'csv' || format === 'json' || argv.totals;
 
-  if (needsAllRows) {
-    const statements = await stm.statements.getAll(buildSearchParams(argv));
-    // getAll returns a plain array; hitting the cap is the truncation signal.
-    const truncated = statements.length >= MAX_ALL_ROWS;
-    const totals = argv.totals ? computeTotals(statements) : null;
-
-    if (format === 'json') {
-      const payload = { data: statements.map(scaleStatement) };
-      if (totals) payload.totals = totals;
-      emit(JSON.stringify(payload, null, 2), argv.output);
-    } else if (format === 'csv') {
-      emit(formatCsv(fields, selector.rawRows(statements, fields)), argv.output);
-      if (totals) console.error(renderTotals(totals, truncated));
-    } else {
-      if (statements.length === 0) {
-        console.log('(no statements)');
-      } else {
-        const start = ((argv.page ?? 1) - 1) * (argv.limit ?? 100);
-        const slice = statements.slice(start, start + (argv.limit ?? 100));
-        console.log(
-          formatTable(selector.headersFor(fields), selector.renderRows(slice, fields), {
-            align: selector.alignFor(fields),
-          }),
-        );
-        if (statements.length > slice.length) {
-          console.log(
-            `\n(showing ${slice.length} of ${statements.length}${truncated ? '+ (truncated)' : ''}; use --page ${(argv.page ?? 1) + 1} for more)`,
-          );
-        }
-      }
-      if (totals) console.log(renderTotals(totals, truncated));
-    }
-
-    if (truncated && format !== 'table') {
-      console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
-    }
-    return;
-  }
-
-  const result = await stm.statements.list({
-    page: argv.page,
-    limit: argv.limit,
-    ...buildSearchParams(argv),
+  const { rows: statements, allRows, truncated, pageContext } = await resolveListScope(argv, {
+    list: stm.statements.list,
+    getAll: stm.statements.getAll,
+    searchParams: buildSearchParams(argv),
   });
+  const totals = argv.totals ? computeTotals(allRows) : null;
 
-  const statements = result?.data ?? [];
-  if (statements.length === 0) {
-    console.log('(no statements)');
-    return;
+  if (format === 'json') {
+    const payload = { data: statements.map(scaleStatement), count: statements.length, truncated };
+    if (totals) payload.totals = totals;
+    emit(JSON.stringify(payload, null, 2), argv.output);
+  } else if (format === 'csv') {
+    emit(formatCsv(fields, selector.rawRows(statements, fields)), argv.output);
+    if (totals) console.error(renderTotals(totals, truncated));
+  } else {
+    if (statements.length === 0) {
+      console.log('(no statements)');
+    } else {
+      console.log(
+        formatTable(selector.headersFor(fields), selector.renderRows(statements, fields), {
+          align: selector.alignFor(fields),
+        }),
+      );
+      const hint = formatScopeHint(argv, { rows: statements, allRows, pageContext });
+      if (hint) console.log(`\n${hint}`);
+    }
+    if (totals) console.log(renderTotals(totals, truncated));
   }
 
-  console.log(
-    formatTable(selector.headersFor(fields), selector.renderRows(statements, fields), {
-      align: selector.alignFor(fields),
-    }),
-  );
-
-  const hint = formatPaginationHint(result?.page_context);
-  if (hint) console.log(`\n${hint}`);
+  if (truncated) {
+    console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
+  }
 }
 
 export { STEPS };

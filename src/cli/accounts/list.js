@@ -4,12 +4,11 @@ import { MAX_ALL_ROWS } from '../../http.js';
 import { clientFor } from '../_helpers.js';
 import {
   formatTable,
-  formatPaginationHint,
   formatCurrency,
   formatCsv,
   formatDate,
 } from '../utils/format.js';
-import { buildColumnSelector, parseStatus } from '../utils/list.js';
+import { buildColumnSelector, parseStatus, resolveListScope, formatScopeHint } from '../utils/list.js';
 
 // Public fields the API exposes (mirrors statements app PUBLIC_FIELDS).
 const PUBLIC_FIELDS = [
@@ -89,65 +88,37 @@ export async function listAccountsHandler(argv) {
   const stm = clientFor();
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
-  const needsAllRows = format === 'csv' || format === 'json' || argv.totals;
 
-  if (needsAllRows) {
-    const accounts = await stm.accounts.getAll(buildSearchParams(argv));
-    // getAll returns a plain array; hitting the cap is the truncation signal.
-    const truncated = accounts.length >= MAX_ALL_ROWS;
-    const totals = argv.totals ? computeTotals(accounts) : null;
-
-    if (format === 'json') {
-      const payload = { data: accounts };
-      if (totals) payload.totals = totals;
-      emit(JSON.stringify(payload, null, 2), argv.output);
-    } else if (format === 'csv') {
-      emit(formatCsv(fields, selector.rawRows(accounts, fields)), argv.output);
-      if (totals) console.error(renderTotals(totals, truncated));
-    } else {
-      if (accounts.length === 0) {
-        console.log('(no accounts)');
-      } else {
-        const start = ((argv.page ?? 1) - 1) * (argv.limit ?? 100);
-        const slice = accounts.slice(start, start + (argv.limit ?? 100));
-        console.log(
-          formatTable(selector.headersFor(fields), selector.renderRows(slice, fields), {
-            align: selector.alignFor(fields),
-          }),
-        );
-        if (accounts.length > slice.length) {
-          console.log(
-            `\n(showing ${slice.length} of ${accounts.length}${truncated ? '+ (truncated)' : ''}; use --page ${(argv.page ?? 1) + 1} for more)`,
-          );
-        }
-      }
-      if (totals) console.log(renderTotals(totals, truncated));
-    }
-
-    if (truncated && format !== 'table') {
-      console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
-    }
-    return;
-  }
-
-  const result = await stm.accounts.list({
-    page: argv.page,
-    limit: argv.limit,
-    ...buildSearchParams(argv),
+  const { rows: accounts, allRows, truncated, pageContext } = await resolveListScope(argv, {
+    list: stm.accounts.list,
+    getAll: stm.accounts.getAll,
+    searchParams: buildSearchParams(argv),
   });
+  const totals = argv.totals ? computeTotals(allRows) : null;
 
-  const accounts = result?.data ?? [];
-  if (accounts.length === 0) {
-    console.log('(no accounts)');
-    return;
+  if (format === 'json') {
+    const payload = { data: accounts, count: accounts.length, truncated };
+    if (totals) payload.totals = totals;
+    emit(JSON.stringify(payload, null, 2), argv.output);
+  } else if (format === 'csv') {
+    emit(formatCsv(fields, selector.rawRows(accounts, fields)), argv.output);
+    if (totals) console.error(renderTotals(totals, truncated));
+  } else {
+    if (accounts.length === 0) {
+      console.log('(no accounts)');
+    } else {
+      console.log(
+        formatTable(selector.headersFor(fields), selector.renderRows(accounts, fields), {
+          align: selector.alignFor(fields),
+        }),
+      );
+      const hint = formatScopeHint(argv, { rows: accounts, allRows, pageContext });
+      if (hint) console.log(`\n${hint}`);
+    }
+    if (totals) console.log(renderTotals(totals, truncated));
   }
 
-  console.log(
-    formatTable(selector.headersFor(fields), selector.renderRows(accounts, fields), {
-      align: selector.alignFor(fields),
-    }),
-  );
-
-  const hint = formatPaginationHint(result?.page_context);
-  if (hint) console.log(`\n${hint}`);
+  if (truncated) {
+    console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
+  }
 }

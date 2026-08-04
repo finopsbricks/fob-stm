@@ -1,4 +1,4 @@
-import { safe, paginationOptions, localOptions } from '../_helpers.js';
+import { safe, paginationOptions, listOptions, localOptions } from '../_helpers.js';
 import { OPERATORS } from './_rule-args.js';
 import { listRulesHandler } from './list.js';
 import { showRuleHandler } from './show.js';
@@ -15,7 +15,7 @@ export function buildRulesSubcommands(yargs) {
       'list',
       'List rules (sorted by priority ASC then created_at DESC; server-side)',
       (yargs) =>
-        paginationOptions(yargs)
+        listOptions(yargs)
           .option('enabled', {
             describe: 'Filter by enabled (true | false)',
             type: 'boolean',
@@ -52,7 +52,7 @@ export function buildRulesSubcommands(yargs) {
             type: 'string',
           })
           .option('format', {
-            describe: 'Output format. csv/json auto-paginate (max 15000 rows)',
+            describe: 'Output format (renders whatever --limit/--page/--all selected)',
             type: 'string',
             choices: ['table', 'csv', 'json'],
           })

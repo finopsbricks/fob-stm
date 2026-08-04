@@ -3,11 +3,10 @@ import { writeFileSync } from 'fs';
 import { MAX_ALL_ROWS } from '../../http.js';
 import {
   formatTable,
-  formatPaginationHint,
   formatCsv,
   formatDate,
 } from '../utils/format.js';
-import { buildColumnSelector } from '../utils/list.js';
+import { buildColumnSelector, resolveListScope, formatScopeHint } from '../utils/list.js';
 import { clientFor } from '../_helpers.js';
 
 // API PUBLIC_FIELDS plus CLI-only derived columns (counts + cache subfields).
@@ -113,65 +112,37 @@ export async function listRulesHandler(argv) {
   const stm = clientFor();
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
-  const needsAllRows = format === 'csv' || format === 'json' || argv.totals;
 
-  if (needsAllRows) {
-    const rules = await stm.rules.getAll(buildSearchParams(argv));
-    // getAll returns a plain array; hitting the cap is the truncation signal.
-    const truncated = rules.length >= MAX_ALL_ROWS;
-    const totals = argv.totals ? computeTotals(rules) : null;
-
-    if (format === 'json') {
-      const payload = { data: rules };
-      if (totals) payload.totals = totals;
-      emit(JSON.stringify(payload, null, 2), argv.output);
-    } else if (format === 'csv') {
-      emit(formatCsv(fields, selector.rawRows(rules, fields)), argv.output);
-      if (totals) console.error(renderTotals(totals, truncated));
-    } else {
-      if (rules.length === 0) {
-        console.log('(no rules)');
-      } else {
-        const start = ((argv.page ?? 1) - 1) * (argv.limit ?? 100);
-        const slice = rules.slice(start, start + (argv.limit ?? 100));
-        console.log(
-          formatTable(selector.headersFor(fields), selector.renderRows(slice, fields), {
-            align: selector.alignFor(fields),
-          }),
-        );
-        if (rules.length > slice.length) {
-          console.log(
-            `\n(showing ${slice.length} of ${rules.length}${truncated ? '+ (truncated)' : ''}; use --page ${(argv.page ?? 1) + 1} for more)`,
-          );
-        }
-      }
-      if (totals) console.log(renderTotals(totals, truncated));
-    }
-
-    if (truncated && format !== 'table') {
-      console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
-    }
-    return;
-  }
-
-  const result = await stm.rules.list({
-    page: argv.page,
-    limit: argv.limit,
-    ...buildSearchParams(argv),
+  const { rows: rules, allRows, truncated, pageContext } = await resolveListScope(argv, {
+    list: stm.rules.list,
+    getAll: stm.rules.getAll,
+    searchParams: buildSearchParams(argv),
   });
+  const totals = argv.totals ? computeTotals(allRows) : null;
 
-  const rules = result?.data ?? [];
-  if (rules.length === 0) {
-    console.log('(no rules)');
-    return;
+  if (format === 'json') {
+    const payload = { data: rules, count: rules.length, truncated };
+    if (totals) payload.totals = totals;
+    emit(JSON.stringify(payload, null, 2), argv.output);
+  } else if (format === 'csv') {
+    emit(formatCsv(fields, selector.rawRows(rules, fields)), argv.output);
+    if (totals) console.error(renderTotals(totals, truncated));
+  } else {
+    if (rules.length === 0) {
+      console.log('(no rules)');
+    } else {
+      console.log(
+        formatTable(selector.headersFor(fields), selector.renderRows(rules, fields), {
+          align: selector.alignFor(fields),
+        }),
+      );
+      const hint = formatScopeHint(argv, { rows: rules, allRows, pageContext });
+      if (hint) console.log(`\n${hint}`);
+    }
+    if (totals) console.log(renderTotals(totals, truncated));
   }
 
-  console.log(
-    formatTable(selector.headersFor(fields), selector.renderRows(rules, fields), {
-      align: selector.alignFor(fields),
-    }),
-  );
-
-  const hint = formatPaginationHint(result?.page_context);
-  if (hint) console.log(`\n${hint}`);
+  if (truncated) {
+    console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
+  }
 }

@@ -107,6 +107,22 @@ Run `fob-stm <resource>` to list a resource's actions.
 Human-readable tables by default. Pass `--json` for machine-readable output; list commands also
 support `--format csv` and `--output <file>`. Data goes to stdout; hints and errors to stderr.
 
+### Pagination scope vs. output format
+
+On `list` commands (`transactions`, `statements`, `accounts`, `rules`), scope and format are
+independent — format never changes which rows are fetched:
+
+- `--limit`/`--page` (default: page 1, limit 100) always fetch exactly that one page, in every
+  format including `--json`/`--csv`.
+- `--all` fetches every matching page (capped at 15,000 rows) — the explicit opt-in for the full
+  set, regardless of format.
+- `--totals` aggregates over the full matching set even without `--all`; the *displayed* rows still
+  respect `--limit`/`--page`.
+
+`--json` output includes `count` and `truncated` so a script can tell how many rows came back and
+whether the 15,000-row cap was hit, without scraping stderr (`--csv`/table still report a hit cap
+via a stderr note).
+
 ### Amount display
 
 Transaction and statement amounts are stored server-side as integers scaled ×1000 (so `1,234.50`

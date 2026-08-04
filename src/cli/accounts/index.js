@@ -2,7 +2,7 @@
  * Subtree builder for `fob-stm accounts <action>`.
  */
 
-import { safe, paginationOptions, localOptions } from '../_helpers.js';
+import { safe, listOptions, localOptions } from '../_helpers.js';
 
 import { listAccountsHandler } from './list.js';
 import { showAccountHandler } from './show.js';
@@ -39,7 +39,7 @@ export function buildAccountsSubcommands(yargs) {
       'list',
       'List accounts (sorted by name ASC — server-side, not overridable)',
       (yargs) =>
-        paginationOptions(yargs)
+        listOptions(yargs)
           .option('category', {
             describe: 'Filter by category',
             type: 'string',
@@ -57,7 +57,7 @@ export function buildAccountsSubcommands(yargs) {
             type: 'string',
           })
           .option('format', {
-            describe: 'Output format. csv/json auto-paginate (max 15000 rows)',
+            describe: 'Output format (renders whatever --limit/--page/--all selected)',
             type: 'string',
             choices: ['table', 'csv', 'json'],
           })

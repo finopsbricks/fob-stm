@@ -5,7 +5,67 @@
  * per field, a DEFAULT_FIELDS array, and PUBLIC_FIELDS (the API's projection
  * vocabulary). buildColumnSelector() bundles validation + row rendering so
  * every handler shares the same --fields semantics and error message style.
+ *
+ * resolveListScope() + formatScopeHint() bundle the fetch-scope side: scope
+ * (`--all` vs `--limit`/`--page`) and format (table/json/csv) are orthogonal —
+ * format only renders whatever scope selected, it never decides how much to
+ * fetch.
  */
+
+import { MAX_ALL_ROWS } from '../../http.js';
+import { formatPaginationHint } from './format.js';
+
+/**
+ * Resolve fetch scope for a list command. `--all` fetches every matching row
+ * (capped at MAX_ALL_ROWS); otherwise a single page (`--limit`/`--page`) is
+ * fetched. `--totals` needs the full matching set to aggregate correctly, so
+ * it forces the full fetch even when the *displayed* rows are still a single
+ * page — `allRows` carries that full set for totals math, `rows` is always
+ * what the resolved scope selected for display.
+ *
+ * @param {{ all?: boolean, totals?: boolean, page?: number, limit?: number }} argv
+ * @param {{
+ *   list: (params: object) => Promise<{ data: any[], page_context: object|null }>,
+ *   getAll: (params: object) => Promise<any[]>,
+ *   searchParams: object,
+ * }} opts
+ * @returns {Promise<{ rows: any[], allRows: any[]|null, truncated: boolean, pageContext: object|null }>}
+ */
+export async function resolveListScope(argv, { list, getAll, searchParams }) {
+  if (!argv.all && !argv.totals) {
+    const result = await list({ page: argv.page, limit: argv.limit, ...searchParams });
+    return { rows: result?.data ?? [], allRows: null, truncated: false, pageContext: result?.page_context ?? null };
+  }
+
+  const allRows = await getAll(searchParams);
+  // getAll returns a plain array; hitting the cap is the truncation signal.
+  const truncated = allRows.length >= MAX_ALL_ROWS;
+
+  if (argv.all) {
+    return { rows: allRows, allRows, truncated, pageContext: null };
+  }
+
+  const limit = argv.limit ?? 100;
+  const start = ((argv.page ?? 1) - 1) * limit;
+  return { rows: allRows.slice(start, start + limit), allRows, truncated, pageContext: null };
+}
+
+/**
+ * Table-format "there's more" footer for a resolveListScope() result. Mirrors
+ * formatPaginationHint() for the plain single-page case; when `--totals`
+ * forced a full fetch without `--all`, builds the equivalent hint from the
+ * displayed slice vs the full fetched set. Returns null once everything is
+ * already shown (`--all`, or no further pages).
+ */
+export function formatScopeHint(argv, { rows, allRows, pageContext }) {
+  if (argv.all) return null;
+  if (allRows) {
+    if (allRows.length <= rows.length) return null;
+    const truncatedSuffix = allRows.length >= MAX_ALL_ROWS ? '+ (truncated)' : '';
+    return `(showing ${rows.length} of ${allRows.length}${truncatedSuffix}; use --page ${(argv.page ?? 1) + 1} for more)`;
+  }
+  return formatPaginationHint(pageContext);
+}
 
 /**
  * @typedef {object} ColumnDef
