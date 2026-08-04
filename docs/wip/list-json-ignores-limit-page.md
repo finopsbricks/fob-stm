@@ -11,7 +11,9 @@ in every mode but **silently ignore them** under `--json`/`--csv`/`--totals` (wh
 rows, capped at 15 000) — so a manual `--json --page N` loop returns the identical full set every page
 → infinite loop / duplicate processing. This work makes **scope** (`--limit`/`--page`/`--all`) and
 **format** (`--json`/`--csv`/`table`) orthogonal, so a format flag only renders and never decides which
-rows are fetched.
+rows are fetched. This is a deliberate breaking change, shipped in one step — no deprecation window,
+no dual-behavior transition. The old "format decides scope" behavior was a mistake, not a contract
+worth preserving.
 
 ---
 
@@ -31,7 +33,8 @@ rows" never terminates.
   `stm.transactions.getAll(...)` instead of the single-page `.list({ page, limit })`.
 - `src/http.js:245-248` (`apiGetAll`) — **explicitly `delete baseParams.page; delete baseParams.limit;`**
   and walks `page_context.has_more` at max page size, capping at `MAX_ALL_ROWS = 15000`.
-- The same `needsAllRows` pattern is duplicated in every other `*/list.js` handler.
+- The same `needsAllRows` pattern is duplicated in every other `*/list.js` handler (statements,
+  accounts, rules, categories, entities).
 
 So the current contract bundles two orthogonal concerns into format flags:
 
@@ -56,47 +59,50 @@ selected; `--all` is the single, explicit "every page" opt-in; `--limit`/`--page
 
 ## Proposed Solution
 
-**Make scope and format orthogonal.** Two independent axes:
-- **Scope** — `--limit` + `--page` (one page; the default is page 1), or `--all` (every page, capped at
+**Make scope and format orthogonal, in one step.** No deprecation window: `--json`/`--csv` flip to
+one-page-by-default immediately. Existing callers that relied on the old "no scope flags = all rows"
+behavior break and need `--all` added — that's the point. This is a CLI contract fix, not a feature; a
+half-migrated contract (warn-but-still-wrong) is worse than a clean break plus a CHANGELOG entry.
+
+Two independent axes:
+- **Scope** — `--limit` + `--page` (one page; default is page 1), or `--all` (every page, capped at
   `MAX_ALL_ROWS`). Nothing else changes the row set.
 - **Format** — `table` (default) | `--json` | `--csv`. Renders whatever scope selected, nothing more.
 - **`--totals`** — a full-set aggregation, orthogonal to both (a partial total is a lie).
 
-Target behaviour once complete:
+Target behaviour:
 ```
-list                          → 1 page, table
-list --json                   → 1 page, JSON          (CHANGED from "all rows")
-list --all --json             → all pages, JSON        (the explicit full-set fetch)
-list --limit 500 --page 2 --json → page 2 of 500, JSON (today: silently ignored)
-list --all                    → all pages, table       (guard/confirm on very large sets)
-list --totals                 → aggregate over the full matching set
+list                              → 1 page, table
+list --json                       → 1 page, JSON        (BREAKING: was "all rows")
+list --all --json                 → all pages, JSON      (the explicit full-set fetch)
+list --limit 500 --page 2 --json  → page 2 of 500, JSON  (BREAKING: was silently ignored → all rows)
+list --all                        → all pages, table     (guard/confirm on very large sets)
+list --totals                     → aggregate over the full matching set
 ```
 
-**This is a breaking change, so it must be phased — the danger is *silent truncation*.** Flipping
-`--json`'s default from all→one-page in one step would quietly cut every existing consumer down to 100
-rows. Worse than the current footgun. Migrate instead:
+## Implementation Phases
 
-### Phase 1: Orthogonal scope, backward-compatible ❌
-- [ ] Add `--all` (fetch every page, capped) — works with any format, decoupled from `--json`/`--csv`.
-- [ ] **Honour `--limit`/`--page` under `--json`/`--csv`** when explicitly passed → return that one page.
-      Fixes the footgun immediately; back-compatible (no one relies on a flag being ignored).
-- [ ] Keep default `--json`/`--csv` (no scope flags) = all rows *for now*, but emit a **deprecation
-      note** to stderr: *"defaulting to all rows is deprecated; pass --all for every page or
-      --limit/--page for one. The default becomes a single page in vNEXT."*
-- [ ] Route all six list commands through a shared scope/format resolver (`src/cli/utils/list.js`).
-- [ ] Tests: `--all` fetches all; `--json --limit N` returns one page; deprecation note fires only on
-      bare `--json`; `--totals` still full-set.
-
-### Phase 2: Self-describing JSON envelope ❌
-- [ ] Add `count` + `truncated` (+ `page_context` where relevant) to the `{ data }` payload, so
-      consumers see scope/cap without scraping stderr: `{ "data": [...], "count": N, "truncated": false }`.
-- [ ] Update `--json`/`--all`/`--limit`/`--page` `describe` strings + README.
-
-### Phase 3: Flip the default (breaking — major version) ❌
-- [ ] `--json`/`--csv` with no scope flags → **one page** (fully orthogonal). `--all` required for the
-      full set. Remove the deprecation note.
-- [ ] CHANGELOG + migration guide; sweep known consumers (incl. the ops/bookkeeping skills:
-      `plan-jobs`, `resolve-statement-overlaps`, `backup-app-state`) to pass `--all`.
+### Phase 1: Orthogonal scope + format, shipped as one breaking change ❌
+- [ ] Add `--all` (fetch every page, capped at `MAX_ALL_ROWS`) — works with any format, decoupled from
+      `--json`/`--csv`.
+- [ ] Remove the `needsAllRows` format-driven branch. `--json`/`--csv` with no scope flags → **one page**
+      (page 1, default limit), same as `table`. `--all` is the only way to get every page.
+- [ ] `--limit`/`--page` always mean "fetch this page," in every format, with no exceptions.
+- [ ] `--totals` stays a full-set aggregation (already correct) — computed over `--all`'s fetch
+      regardless of the scope flags a user passed alongside it.
+- [ ] Self-describing JSON envelope: `{ data, count, truncated }` (`truncated` only meaningful under
+      `--all`), so consumers see scope/cap without scraping stderr.
+- [ ] Route all six list commands (`transactions`, `statements`, `accounts`, `rules`, `categories`,
+      `entities`) through a shared scope/format resolver in `src/cli/utils/list.js` — replace the
+      duplicated `needsAllRows`/`format` boilerplate in each handler, don't just fix it six times.
+- [ ] Update `--json`/`--all`/`--limit`/`--page` `describe` strings in each `src/cli/*/index.js` +
+      README to state the scope/format contract explicitly.
+- [ ] CHANGELOG entry marking this as a breaking change; bump version accordingly.
+- [ ] Sweep known internal consumers (ops/bookkeeping skills: `plan-jobs`, `resolve-statement-overlaps`,
+      `backup-app-state`) to pass `--all` where they need the full set — done as part of this change,
+      not a follow-up.
+- [ ] Tests: `--all` fetches all pages; bare `--json`/`--csv` return one page; `--json --limit N --page
+      M` returns that page; `--totals` still full-set; envelope has `count`/`truncated`.
 
 ## Related Files
 
@@ -104,7 +110,8 @@ rows. Worse than the current footgun. Migrate instead:
 - `src/cli/statements/list.js`, `src/cli/accounts/list.js`, `src/cli/rules/list.js`,
   `src/cli/categories/list.js`, `src/cli/entities/list.js` — same pattern
 - `src/http.js` — `apiGetAll` strips `page`/`limit`, caps at `MAX_ALL_ROWS` (`:238-275`)
-- `src/cli/utils/list.js` — candidate home for the shared warn + envelope helper
+- `src/cli/utils/list.js` — home for the shared scope/format resolver (already houses
+  `buildColumnSelector`, `parseStatus`, `parseArchived`)
 - `src/cli/*/index.js` — option `describe` strings ("csv/json auto-paginate (max 15000 rows)")
 
 ## Discovery note
