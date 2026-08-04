@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-04
+
+### Changed
+- **Breaking:** `transactions`/`statements`/`accounts`/`rules` `list` commands no longer let
+  output format decide fetch scope. Bare `--json`/`--csv` now return exactly **one page** (page 1,
+  limit 100), same as `table` — they used to silently auto-paginate every matching row (up to
+  15,000), so `--limit`/`--page` were accepted but ignored under `--json`/`--csv`. A new `--all`
+  flag is the explicit opt-in for fetching every page. `--limit`/`--page` now always mean a page,
+  in every format. `--totals` still aggregates over the full matching set, but the *displayed*
+  rows keep respecting scope. If a script relied on bare `--json`/`--csv` returning every row, add
+  `--all`.
+- `--json` output on these commands gains `count` and `truncated` fields so a script can tell how
+  many rows came back and whether the 15,000-row cap was hit, without scraping stderr.
+
 ## [0.5.0] - 2026-07-31
 
 ### Added
