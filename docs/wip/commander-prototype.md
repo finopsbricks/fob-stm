@@ -356,6 +356,38 @@ One behavioural difference worth knowing: for a command with no options of its o
 (`config profiles use <name>`), yargs omitted the `Options:` heading entirely, while commander shows
 it holding `-h, --help`. The test was updated to assert ordering rather than that omission.
 
+### Completion — added after promotion
+
+Promoting the port surfaced a regression the prototype had not predicted. The `fob` dispatcher
+completes `fob <tool> …` by delegating to `<tool> --get-yargs-completions` — a flag **yargs answers
+automatically**, whether or not a CLI ever calls `.completion()`. Commander does not, so
+`fob stm <TAB>` went silently dead: `error: unknown option`, no candidates, no visible failure.
+
+Worth noting what this reveals: `fob-stm` never called `.completion()`. Its completion was a yargs
+freebie nobody chose — consistent with the earlier finding that only 1 of 7 CLIs ever configured it
+deliberately.
+
+Fixed in `src/cli/_completion.js` (~110 lines including docs), which implements both halves:
+
+- `fob-stm --get-yargs-completions <words…>` — walks the command tree to the addressed subcommand and
+  prints what could come next. Resolves aliases while descending, offers aliases as candidates,
+  filters by the partial word, adds long flags once a dash is typed, and skips commander's implicit
+  `help` subcommand.
+- `fob-stm completion` — prints a sourceable bash/zsh script, matching what `<tool> completion` does
+  elsewhere in the family.
+
+**The flag keeps its `--get-yargs-completions` name despite yargs being gone.** It is the wire
+protocol the dispatcher already speaks to every tool, so a commander CLI drops into the existing
+dispatcher with no change on that side, and a mixed yargs/commander family keeps working. Renaming
+it would mean teaching the dispatcher two protocols for no user-visible gain.
+
+Verified through the real bash completion function, both directly (`fob-stm acc<TAB>` → `accounts`)
+and through the dispatcher (`fob stm co<TAB>` → `config`), with `fob worker li<TAB>` → `lines`
+confirming the still-yargs CLIs are unaffected. 10 completion tests added; 61 tests pass.
+
+This belongs in the reference skeleton: every new commander CLI needs it, and it is the first
+completion in the family that exists on purpose.
+
 ### Decisions this implies
 
 Adopting the path above needs a new decision record superseding

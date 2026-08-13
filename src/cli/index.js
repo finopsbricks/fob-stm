@@ -13,6 +13,7 @@ import { Command } from 'commander';
 
 import { setOrgOverride } from './config-store.js';
 import { safe, configureTreeHelp } from './_helpers.js';
+import { handleCompletion } from './_completion.js';
 import { gettingStartedHandler } from './getting-started.js';
 import { buildConfigCommand } from './config/index.js';
 import { buildAccountsCommand } from './accounts/index.js';
@@ -60,6 +61,10 @@ export function run(argv) {
   // Applied tree-wide because configureHelp() is not inherited through
   // addCommand().
   configureTreeHelp(program);
+
+  // Served before parse(): `--get-yargs-completions` is not a declared option and
+  // allowUnknownOption(false) would reject it.
+  if (handleCompletion(program, argv, 'fob-stm')) return;
 
   program.parse(argv, { from: 'user' });
 }
