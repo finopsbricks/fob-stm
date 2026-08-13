@@ -9,6 +9,10 @@
  * Commander port of src/cli/index.js — see docs/wip/commander-prototype.md.
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
 import { Command } from 'commander';
 
 import { setOrgOverride } from './config-store.js';
@@ -24,12 +28,19 @@ import { buildReportsCommand } from './reports/index.js';
 import { buildCategoriesCommand } from './categories/index.js';
 import { buildEntitiesCommand } from './entities/index.js';
 
+/** The published package version, for `--version`. */
+function packageVersion() {
+  const here = dirname(fileURLToPath(import.meta.url));
+  return JSON.parse(readFileSync(join(here, '..', '..', 'package.json'), 'utf8')).version;
+}
+
 export function run(argv) {
   const program = new Command();
 
   program
     .name('fob-stm')
     .usage('<resource> <action> [target] [options]')
+    .version(packageVersion(), '-v, --version', 'Show version number')
     .option(
       '--profile, --org <name>',
       'Use credentials from a specific configured profile (overrides current + env)',

@@ -117,6 +117,10 @@ export function configureTreeHelp(cmd) {
       const name = c.aliases().length ? `${c.name()}|${c.aliases().join('|')}` : c.name();
       return `${name} ${c.usage().replace(/\[options\] ?/, '')}`.trim();
     },
+    // Commander adds an implicit `help [command]` subcommand and lists it beside
+    // the real ones. `--help` is already documented under Options:, so the row is
+    // noise in a resource listing.
+    visibleCommands: (c) => c.commands.filter((sub) => sub.name() !== 'help' && !sub._hidden),
   });
   for (const child of cmd.commands) configureTreeHelp(child);
   return cmd;

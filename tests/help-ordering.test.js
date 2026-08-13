@@ -50,11 +50,32 @@ describe('help layout', () => {
   });
 });
 
+describe('version flag', () => {
+  it('prints the package version and exits 0, under both spellings', () => {
+    const { version } = JSON.parse(
+      execFileSync('node', ['-e', "process.stdout.write(require('fs').readFileSync('package.json','utf8'))"], {
+        encoding: 'utf8',
+        cwd: join(dirname(fileURLToPath(import.meta.url)), '..'),
+      }),
+    );
+    for (const flag of ['--version', '-v']) {
+      const out = execFileSync('node', [bin, flag], { encoding: 'utf8' });
+      expect(out.trim()).toBe(version);
+    }
+  });
+});
+
 describe('help formatting', () => {
   it('lists bare subcommand names, without repeating the parent command path', () => {
     const out = execFileSync('node', [bin, 'accounts', '--help'], { encoding: 'utf8' });
     expect(out).toMatch(/^ {2}show <id> {2,}Show an account by ID$/m);
     expect(out).not.toMatch(/fob-stm accounts show/);
+  });
+
+  it("omits commander's implicit help subcommand from the listing", () => {
+    const out = execFileSync('node', [bin, '--help'], { encoding: 'utf8' });
+    expect(out).toMatch(/^ {2}accounts\b/m);
+    expect(out).not.toMatch(/^ {2}help \[command\]/m);
   });
 
   it('surfaces command aliases in the listing', () => {
