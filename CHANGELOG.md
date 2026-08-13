@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-13
+
+### Changed
+- **Argument parsing moved from yargs to commander.** `yargs` is gone from the dependencies;
+  `commander` replaces it. Command syntax, flags, arguments and output are unchanged — every
+  command you ran before runs the same way. Handlers were not touched at all: an adapter merges
+  commander's `(…positionals, opts, cmd)` back into the single `argv` object they already expected,
+  so the whole change is confined to the command-tree builders.
+- **Help output is substantially more readable.** Subcommand listings now show bare command names
+  (`show <id>`) instead of repeating the full path on every row (`fob-stm accounts show <id>`), and
+  long descriptions wrap on word boundaries with a hanging indent instead of breaking mid-word
+  (`fr|om`, `[yyyy-mm-d|d]`). yargs exposes no help-formatter API, which is what motivated the
+  switch. Command aliases now appear in the listing as `remove|rm`, `current|whoami`,
+  `profiles|orgs`.
+- **Breaking (cosmetic):** for a command that declares no options of its own — e.g.
+  `config profiles use <name>` — help now shows an `Options:` heading containing `-h, --help`.
+  yargs omitted the heading entirely. Only affects anything parsing help text.
+
+### Added
+- Shell completion is now deliberate rather than incidental. `fob-stm completion` prints a
+  sourceable bash/zsh script, and `fob-stm --get-yargs-completions <words…>` serves the candidates.
+  Completion resolves aliases while descending (`config orgs …` completes like
+  `config profiles …`), offers aliases as candidates, and completes long flags once a dash is typed.
+  The flag keeps its historical name so the `fob` dispatcher reaches every tool in the family
+  through one protocol — `fob stm <TAB>` and `fob-stm <TAB>` both work.
+
+### Fixed
+- `--version` / `-v` print the package version again. They were briefly broken during the migration
+  (reported `unknown option` while exiting 0) and are now covered by a test.
+- Commander's implicit `help [command]` subcommand no longer appears as a row in resource listings.
+
 ## [0.6.0] - 2026-08-04
 
 ### Changed
