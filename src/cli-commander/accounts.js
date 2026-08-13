@@ -7,7 +7,7 @@
 
 import { Command, Option } from 'commander';
 
-import { safe, listOptions, jsonOption } from './_helpers.js';
+import { safe, listOptions, jsonOption, idJsonCommand } from './_helpers.js';
 
 import { listAccountsHandler } from '../cli/accounts/list.js';
 import { showAccountHandler } from '../cli/accounts/show.js';
@@ -46,16 +46,9 @@ function accountFieldOptions(cmd) {
     .option('--json', 'Output raw JSON');
 }
 
-/**
- * The `<id>`-plus-`--json` shape, which appears 6× below. On yargs this was
- * `localOptions(y.positional('id', {...})).option('json', {...})` spelled out
- * each time; here it collapses to one helper.
- */
-function idCommand(parent, name, description, handler) {
-  return jsonOption(parent.command(name).description(description).argument('<id>', 'Account ID')).action(
-    safe(handler),
-  );
-}
+/** `idJsonCommand` bound to this resource's positional description. */
+const idCommand = (parent, name, description, handler) =>
+  idJsonCommand(parent, name, description, 'Account ID', handler);
 
 export function buildAccountsCommand() {
   const accounts = new Command('accounts').description('Query accounts');

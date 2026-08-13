@@ -46,6 +46,12 @@ prototype: *if a handler needs editing, the port is doing something wrong.*
 
 ## Scope
 
+**Extended 2026-08-13 to a full migration of all eight resources** (originally `accounts` only), on
+the reasoning that one complete CLI is what hardens the pattern for future ones. Existing CLIs stay
+on yargs. See [Full migration](#full-migration-all-eight-resources) below.
+
+The original single-resource scope is kept for context:
+
 **Port `accounts` only.** 193 LOC, 13 commands, and it exercises every pattern in the codebase:
 
 | Pattern | Example in `accounts` |
@@ -214,39 +220,130 @@ Recorded deliberately, since the prototype was run by someone who expected comma
 - The other seven resources, notably `statements` (252 LOC, the largest)
 - `.conflicts()` (3 uses family-wide) and `--json`-vs-`--format` interactions
 
+## Full migration — all eight resources
+
+Completed 2026-08-13. Every resource ported; `src/cli/` untouched throughout.
+
+| File | Covers | LOC |
+|---|---|---|
+| `index.js` | root tree, `--profile` hook, `getting-started` | 64 |
+| `_helpers.js` | argv adapter, option helpers, tree-wide help config | 130 |
+| `accounts.js` | 13 commands | 166 |
+| `statements.js` | 14 commands | 200 |
+| `rules.js` | 7 commands | 147 |
+| `transactions.js` | 3 commands | 73 |
+| `config.js` | 3-level tree, aliases | 100 |
+| `aggregates.js` | `categories` + `entities` | 65 |
+| `reports.js` | 1 command | 27 |
+
+**1083 LOC (yargs, 12 files) → 972 LOC (commander, 9 files) — a 10% reduction.**
+
+The saving is not from commander being terser per-call; it comes from the repetition collapsing.
+`idJsonCommand()` replaces ~10 hand-written `<id>` + `--json` blocks, and `categories`/`entities` —
+two near-identical 43-LOC files on yargs — merge into one `aggregates.js`.
+
+### Every pattern in the tree ported cleanly
+
+| Pattern | yargs | commander |
+|---|---|---|
+| repeatable option | `array: true` | `--match <c...>` |
+| mutually exclusive | `.conflicts('enable','disable')` | `new Option(…).conflicts('disable')` |
+| command aliases | `['remove <name>','rm <name>']` | `.alias('rm')` |
+| 3-level nesting | nested builders | `addCommand()` |
+| choices on positional | `.positional(…, {choices})` | `new Argument(…).choices()` |
+| required option | `demandOption: true` | `.requiredOption()` |
+| numeric coercion | `type: 'number'` | `.option(…, Number)` |
+| usage example | `.example()` | `.addHelpText('after', …)` |
+| strict mode | `.strict()` | `.allowUnknownOption(false)` |
+| root middleware | `.middleware()` | `.hook('preAction')` |
+
+Two required a different shape rather than a direct swap:
+
+- **Per-command middleware.** `rules edit` used `.middleware()` to fold `--enable`/`--disable` into
+  one `enabled` field. Commander has no per-command hook, so the transform moved into the action
+  wrapper. Equivalent, marginally less tidy.
+- **Boolean negation.** yargs' `type: 'boolean'` accepts `--no-reviewed` implicitly; commander needs
+  `--no-reviewed` declared explicitly alongside `--reviewed`. More verbose, but more honest — the
+  negation now appears in `--help`, where before it was only discoverable from prose.
+
+### Verified
+
+- **Runtime parity.** `accounts list`, `transactions list`, `statements list`, `rules list`,
+  `config profiles list`, `config settings list` — byte-identical output through both binaries,
+  including `config settings list`, which runs fully without credentials.
+- **Validation parity.** Conflicts, `choices`, unknown-flag rejection, and missing-required-option all
+  behave correctly, with somewhat more specific messages than yargs
+  (`option '--format <format>' argument 'bogus' is invalid. Allowed choices are table, csv, json.`
+  vs yargs' bare `Invalid values:`).
+- **Aliases work** at runtime (`config orgs`, `profiles rm`) and now render in help as
+  `remove|rm <name>` — this needed an explicit fix, since the `subcommandTerm` override initially
+  dropped them.
+- **Option grouping** matches the CLI standard: `Options:` above `Global Options:`, via
+  `showGlobalOptions: true`.
+- **All 48 existing tests pass** — the port is purely additive.
+
+### Still not done
+
+- `tests/help-ordering.test.js` and the other suites exercise the **yargs** tree. They pass because
+  nothing was removed; they do not cover `src/cli-commander/`. Promoting the port means repointing
+  them.
+- No handler was run against a live API — no profile is configured in this environment, so every
+  resource stops at credential resolution. Parity is verified up to that boundary, not past it.
+- Completion is not wired for the commander tree.
+
+
 ## Recommendation
 
-**Commander is a genuine improvement for this codebase, and migration is safer than expected — but
-do not migrate yet.**
+**The migration works. Commander is the better fit, and `fob-stm` is now the reference
+implementation for new `fob-<tool>` CLIs.**
 
-The case for:
+Evidence, after porting all 59 commands:
 
-1. Handlers need **zero** changes. The migration surface is 12 files per repo, not 82.
-2. Help output is fixed — the original complaint, unfixable on yargs.
-3. Zero dependencies vs ~7; ~2× faster cold start.
-4. Slightly less code.
+1. **Handlers need zero changes.** All ~70 non-yargs files untouched; a ~25-line adapter absorbs the
+   entire signature difference. This is what makes the pattern safe to recommend.
+2. **Help output is fixed** — bare command names, hanging indent, word-boundary wrapping. The problem
+   that started this whole thread, and one yargs structurally cannot solve.
+3. **Option grouping** matching the CLI standard is a documented one-liner
+   (`showGlobalOptions: true`) rather than yargs' `localOptions()` group-ordering workaround.
+4. **10% less code** (1083 → 972), 12 files → 9.
+5. **Zero dependencies** vs ~7; ~2× faster cold start.
+6. **Every pattern ported** — repeatable options, conflicts, aliases, 3-level nesting, choices on
+   positionals, strict mode. Nothing needed a workaround; only two needed a different shape.
 
-5. Option grouping — the mandated `Options:` / `Global Options:` layout — is a **documented one-line
-   flag** (`showGlobalOptions: true`) rather than yargs' `localOptions()` workaround.
+Costs, stated plainly:
 
-The case for waiting:
+- Commander's warts are real: `configureHelp()` doesn't inherit through `addCommand()`, it doesn't
+  wrap at all by default, and its `[options]` term must be stripped. All are absorbed once in
+  `configureTreeHelp()` — exactly what a reference implementation exists to carry.
+- Boolean negations must be declared explicitly.
+- Per-command middleware has no direct equivalent.
 
-1. **395 commands / 803 options across six repos** is still the real cost, even at ~40 LOC saved per
-   resource and a mechanical per-file port.
-2. **The cheaper fix is untried.** Per
-   [cli-help-readability](../../fob-worker/docs/wip/cli-help-readability.md), simply shortening
-   descriptions fixes most of the help problem on yargs, at near-zero risk. That should be tried
-   before a six-repo migration is contemplated.
-3. **Only 1 of 8 resources is ported.** `statements` (252 LOC) is the one most likely to surface
-   something this prototype missed.
+### Path forward
 
-**Recommended path: commander for *new* `fob-<tool>` CLIs; no forced migration of existing ones.**
+**New `fob-<tool>` CLIs use commander, copying `fob-stm`'s `src/cli-commander/` skeleton.** The
+copy-not-package rule makes a mixed family survivable — each CLI already carries its own skeleton, so
+"new ones use commander" costs nothing in coordination.
 
-The copy-not-package rule makes a mixed family survivable in a way a shared `cli-kit` would not —
-each CLI already carries its own skeleton, so "new ones use commander" costs nothing in coordination.
-Existing CLIs migrate only if and when they're being substantially reworked anyway.
+**Existing CLIs stay on yargs.** 395 commands / 803 options across five other repos is not worth
+re-typing for a formatting improvement, and a half-migrated family is worse than either end state.
+They migrate only if substantially reworked anyway.
 
-This is a recommendation, not a decision. Adopting it means writing a new decision record that
-supersedes [D1](../../fob-cli/docs/decisions/0001-yargs-as-cli-framework.md), and amending the
+### To promote this port to be `fob-stm`'s real CLI
+
+Not done yet — deliberately, since it changes what ships:
+
+1. Add `commander` to `package.json` dependencies (currently installed `--no-save`).
+2. Point `bin/cli.js` at `src/cli-commander/`, delete `bin/fob-stm-commander.js`.
+3. Repoint the 9 test suites at the commander tree; rewrite `help-ordering.test.js`, which asserts
+   yargs' exact layout.
+4. Smoke-test against a live profile — **nothing here has been run past credential resolution.**
+5. Delete `src/cli/`'s builders, or keep one release cycle as a fallback.
+6. Remove `yargs` from dependencies.
+
+### Decisions this implies
+
+Adopting the path above needs a new decision record superseding
+[D1](../../fob-cli/docs/decisions/0001-yargs-as-cli-framework.md), and an amendment to the
 [CLI standard](https://github.com/alexjv89/engineering-standards/blob/main/cli/command-grammar.md),
-whose help section currently documents yargs mechanics as if they were the only option.
+whose help section documents yargs mechanics (`localOptions()`, the group-ordering explanation) as if
+they were the only option. Both should wait until the port actually ships.

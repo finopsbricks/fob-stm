@@ -84,6 +84,18 @@ export function jsonOption(cmd) {
 }
 
 /**
+ * The `<id>` + `--json` command shape, which recurs ~10× across the tree
+ * (`retire`, `archive`, `retry`, …). On yargs each instance spelled out
+ * `localOptions(y.positional('id', {...})).option('json', {...})`; collapsing it
+ * is most of why the commander builders are shorter.
+ */
+export function idJsonCommand(parent, name, description, idDescription, handler) {
+  return jsonOption(
+    parent.command(name).description(description).argument('<id>', idDescription),
+  ).action(safe(handler));
+}
+
+/**
  * Help formatting for the whole tree.
  *
  * This is what yargs cannot do — it has no formatter API at all, so its command
@@ -92,6 +104,11 @@ export function jsonOption(cmd) {
  * `subcommandTerm` drops commander's default `[options]` suffix. Without that the
  * name column pads to 44 chars, leaving too little room for descriptions to wrap
  * — the same wide-name-column failure yargs has, except here it is fixable.
+ * Aliases are preserved (`remove|rm`), since they are the only place a reader
+ * discovers them.
+ *
+ * `showGlobalOptions` reproduces the mandated `Options:` above `Global Options:`
+ * layout — on yargs this needed the `localOptions()` group-ordering workaround.
  *
  * Note commander does **not** inherit `configureHelp()` through `addCommand()`,
  * so this must be applied to each Command in the tree rather than once at the
@@ -100,7 +117,11 @@ export function jsonOption(cmd) {
 export function configureTreeHelp(cmd) {
   cmd.configureHelp({
     helpWidth: process.stdout.columns || 92,
-    subcommandTerm: (c) => `${c.name()} ${c.usage().replace(/\[options\] ?/, '')}`.trim(),
+    showGlobalOptions: true,
+    subcommandTerm: (c) => {
+      const name = c.aliases().length ? `${c.name()}|${c.aliases().join('|')}` : c.name();
+      return `${name} ${c.usage().replace(/\[options\] ?/, '')}`.trim();
+    },
   });
   for (const child of cmd.commands) configureTreeHelp(child);
   return cmd;
