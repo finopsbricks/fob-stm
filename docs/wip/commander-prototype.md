@@ -1,6 +1,7 @@
 # WIP — Prototyping `fob-stm` on commander
 
-**Status:** in progress, started 2026-08-13
+**Status:** **done — shipped 2026-08-13.** `fob-stm` runs on commander; yargs is gone from its
+dependencies. This doc is kept as the record of how the decision was reached.
 **Goal:** a side-by-side comparison of the same CLI written on yargs and on commander, to decide
 which is cleaner and more maintainable *for this codebase* — not in the abstract.
 **Parent evaluation:** [yargs-alternatives](../../fob-cli/docs/wip/yargs-alternatives.md)
@@ -328,17 +329,32 @@ copy-not-package rule makes a mixed family survivable — each CLI already carri
 re-typing for a formatting improvement, and a half-migrated family is worse than either end state.
 They migrate only if substantially reworked anyway.
 
-### To promote this port to be `fob-stm`'s real CLI
+### Promotion — done
 
-Not done yet — deliberately, since it changes what ships:
+The port was promoted to be the real CLI on 2026-08-13:
 
-1. Add `commander` to `package.json` dependencies (currently installed `--no-save`).
-2. Point `bin/cli.js` at `src/cli-commander/`, delete `bin/fob-stm-commander.js`.
-3. Repoint the 9 test suites at the commander tree; rewrite `help-ordering.test.js`, which asserts
-   yargs' exact layout.
-4. Smoke-test against a live profile — **nothing here has been run past credential resolution.**
-5. Delete `src/cli/`'s builders, or keep one release cycle as a fallback.
-6. Remove `yargs` from dependencies.
+1. `commander@^15.0.0` added to `dependencies`; **`yargs` removed.**
+2. The builders moved from `src/cli-commander/` into `src/cli/`, replacing the yargs ones in place,
+   so the resource directories keep their handlers alongside their builder. `aggregates.js` split
+   back into `categories/index.js` + `entities/index.js` over a shared
+   `_aggregate-options.js`; `_helpers.js` merged the command-tree helpers with the handler-facing
+   ones (`validateDateRange`, `requireCreds`, `clientFor`) that never depended on the framework.
+3. `bin/cli.js` now imports `src/cli/index.js` directly — `hideBin` is gone with yargs, replaced by
+   `process.argv.slice(2)`. The scaffolding (`src/cli-commander/`, `bin/fob-stm-commander.js`) is
+   deleted.
+4. **Verified with yargs physically removed from `node_modules`:** every command path still runs.
+   yargs now reaches the project only as a transitive devDependency of jest
+   (`jest → jest-cli → yargs`), never at runtime.
+5. **51 tests pass** (up from 48). The 8 handler suites needed *no changes at all* — the strongest
+   confirmation that the adapter holds. `help-ordering.test.js` was rewritten: it asserted yargs'
+   `Positionals:` heading, now `Arguments:`, and three formatting tests were added to lock in the
+   behaviour the migration was for (bare subcommand names, visible aliases, word-boundary wrapping).
+6. 18/18 command paths smoke-tested, including three-level (`config profiles rm --help`) and alias
+   (`config orgs --help`) routes.
+
+One behavioural difference worth knowing: for a command with no options of its own
+(`config profiles use <name>`), yargs omitted the `Options:` heading entirely, while commander shows
+it holding `-h, --help`. The test was updated to assert ordering rather than that omission.
 
 ### Decisions this implies
 

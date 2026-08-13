@@ -1,26 +1,27 @@
-import { safe, localOptions } from '../_helpers.js';
+/**
+ * Subtree builder for `fob-stm reports <action>`.
+ */
+
+import { Argument, Command, Option } from 'commander';
+
+import { safe } from '../_helpers.js';
 import { showReportHandler, REPORT_NAMES } from './show.js';
 
-export function buildReportsSubcommands(yargs) {
-  return yargs
-    .usage('$0 reports <action> [options]')
-    .command(
-      'show <name>',
-      'Compute and print a report (JSON output)',
-      (yargs) =>
-        localOptions(yargs.positional('name', { describe: 'Report name', type: 'string', choices: REPORT_NAMES }))
-          .option('from', { describe: 'Start date (YYYY-MM-DD)', type: 'string' })
-          .option('to', { describe: 'End date (YYYY-MM-DD)', type: 'string' })
-          .option('group-by', {
-            describe: 'Time bucket',
-            type: 'string',
-            choices: ['day', 'week', 'month', 'year'],
-          })
-          .option('accounts', { describe: 'Filter to account IDs (comma-separated)', type: 'string' })
-          .option('particulars', { describe: 'Filter by particulars (free-text)', type: 'string' })
-          .option('entity', { describe: 'Filter by entity', type: 'string' })
-          .option('category', { describe: 'Filter by category', type: 'string' }),
-      safe(showReportHandler),
-    )
-    .demandCommand(1, 'Specify an action: show');
+export function buildReportsCommand() {
+  const reports = new Command('reports').description('Compute reports');
+
+  reports
+    .command('show')
+    .description('Compute and print a report (JSON output)')
+    .addArgument(new Argument('<name>', 'Report name').choices(REPORT_NAMES))
+    .option('--from <date>', 'Start date (YYYY-MM-DD)')
+    .option('--to <date>', 'End date (YYYY-MM-DD)')
+    .addOption(new Option('--group-by <bucket>', 'Time bucket').choices(['day', 'week', 'month', 'year']))
+    .option('--accounts <ids>', 'Filter to account IDs (comma-separated)')
+    .option('--particulars <text>', 'Filter by particulars (free-text)')
+    .option('--entity <entity>', 'Filter by entity')
+    .option('--category <category>', 'Filter by category')
+    .action(safe(showReportHandler));
+
+  return reports;
 }

@@ -2,192 +2,162 @@
  * Subtree builder for `fob-stm accounts <action>`.
  */
 
-import { safe, listOptions, localOptions } from '../_helpers.js';
+import { Command, Option } from 'commander';
+
+import { safe, listOptions, jsonOption, idJsonCommand } from '../_helpers.js';
 
 import { listAccountsHandler } from './list.js';
 import { showAccountHandler } from './show.js';
 import { balanceAccountHandler } from './balance.js';
 import { createAccountHandler } from './create.js';
 import { updateAccountHandler } from './update.js';
-import { retireAccountHandler, quarantineAccountHandler, reactivateAccountHandler } from './status.js';
+import {
+  retireAccountHandler,
+  quarantineAccountHandler,
+  reactivateAccountHandler,
+} from './status.js';
 import { deleteAccountHandler } from './delete.js';
 import { mergeAccountsHandler } from './merge.js';
 import { addIdentifierHandler } from './add-identifier.js';
 import { removeIdentifierHandler } from './remove-identifier.js';
 import { recalculateOpeningBalanceHandler } from './recalculate-opening-balance.js';
 
-function accountFieldOptions(yargs) {
-  return localOptions(yargs)
-    .option('category', { describe: 'Account category', type: 'string', choices: ['bank', 'credit_card'] })
-    .option('currency', { describe: 'Currency code (e.g. INR, USD)', type: 'string' })
-    .option('acc-no', { describe: 'Account number', type: 'string' })
-    .option('description', { describe: 'Account description', type: 'string' })
-    .option('color', { describe: 'Display color (hex)', type: 'string' })
-    .option('opening', { describe: 'Opening balance, currency units (e.g. 5000.50 = ₹5000.50)', type: 'number' })
-    .option('upload-frequency', {
-      describe: 'Expected statement upload cadence',
-      type: 'string',
-      choices: ['daily', 'weekly', 'monthly', 'quarterly', 'manual'],
-    })
-    .option('json', { describe: 'Output raw JSON', type: 'boolean' });
+/** Shared field flags for `create` and `update`. */
+function accountFieldOptions(cmd) {
+  return cmd
+    .addOption(new Option('--category <category>', 'Account category').choices(['bank', 'credit_card']))
+    .option('--currency <code>', 'Currency code (e.g. INR, USD)')
+    .option('--acc-no <number>', 'Account number')
+    .option('--description <text>', 'Account description')
+    .option('--color <hex>', 'Display color (hex)')
+    .option('--opening <amount>', 'Opening balance, currency units (e.g. 5000.50 = ₹5000.50)', Number)
+    .addOption(
+      new Option('--upload-frequency <cadence>', 'Expected statement upload cadence').choices([
+        'daily',
+        'weekly',
+        'monthly',
+        'quarterly',
+        'manual',
+      ]),
+    )
+    .option('--json', 'Output raw JSON');
 }
 
-export function buildAccountsSubcommands(yargs) {
-  return yargs
-    .usage('$0 accounts <action> [options]')
-    .command(
-      'list',
-      'List accounts (sorted by name ASC — server-side, not overridable)',
-      (yargs) =>
-        listOptions(yargs)
-          .option('category', {
-            describe: 'Filter by category',
-            type: 'string',
-            choices: ['bank', 'credit_card'],
-          })
-          .option('status', {
-            describe: 'Filter by lifecycle status',
-            type: 'string',
-            choices: ['all', 'active', 'retired', 'quarantined'],
-            default: 'active',
-          })
-          .option('fields', {
-            describe:
-              'Columns to show, comma-separated (default: id,name,category,acc_no,currency,opening_balance,upload_frequency,status)',
-            type: 'string',
-          })
-          .option('format', {
-            describe: 'Output format (renders whatever --limit/--page/--all selected)',
-            type: 'string',
-            choices: ['table', 'csv', 'json'],
-          })
-          .option('output', {
-            describe: 'Write output to a file instead of stdout (for csv/json)',
-            type: 'string',
-          })
-          .option('totals', {
-            describe: 'Show count, count-by-category, and opening_balance sum',
-            type: 'boolean',
-          }),
-      safe(listAccountsHandler),
+/** `idJsonCommand` bound to this resource's positional description. */
+const idCommand = (parent, name, description, handler) =>
+  idJsonCommand(parent, name, description, 'Account ID', handler);
+
+export function buildAccountsCommand() {
+  const accounts = new Command('accounts').description('Query accounts');
+
+  listOptions(
+    accounts
+      .command('list')
+      .description('List accounts (sorted by name ASC — server-side, not overridable)'),
+  )
+    .addOption(new Option('--category <category>', 'Filter by category').choices(['bank', 'credit_card']))
+    .addOption(
+      new Option('--status <status>', 'Filter by lifecycle status')
+        .choices(['all', 'active', 'retired', 'quarantined'])
+        .default('active'),
     )
-    .command(
-      'show <id>',
-      'Show an account by ID',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(showAccountHandler),
+    .option(
+      '--fields <list>',
+      'Columns to show, comma-separated (default: id,name,category,acc_no,currency,opening_balance,upload_frequency,status)',
     )
-    .command(
-      'balance <id> [yyyy-mm-dd]',
-      "Show an account's computed balance as of a date (defaults to today)",
-      (yargs) =>
-        localOptions(
-          yargs
-            .positional('id', { describe: 'Account ID', type: 'string' })
-            .positional('yyyy-mm-dd', {
-              describe: 'As-of date; defaults to today (local TZ)',
-              type: 'string',
-            }),
-        )
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(balanceAccountHandler),
+    .addOption(
+      new Option('--format <format>', 'Output format (renders whatever --limit/--page/--all selected)').choices([
+        'table',
+        'csv',
+        'json',
+      ]),
     )
-    .command(
-      'create',
-      'Create a new account',
-      (yargs) =>
-        accountFieldOptions(yargs).option('name', { describe: 'Account name', type: 'string', demandOption: true }),
-      safe(createAccountHandler),
-    )
-    .command(
-      'update <id>',
-      'Update account fields (only passed flags are changed)',
-      (yargs) =>
-        accountFieldOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
-          .option('name', { describe: 'Account name', type: 'string' }),
-      safe(updateAccountHandler),
-    )
-    .command(
-      'retire <id>',
-      'Retire an account (closed but real; hidden from live UI, still counted in reports)',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(retireAccountHandler),
-    )
-    .command(
-      'quarantine <id>',
-      'Quarantine an account (suspect data; hidden from live UI and excluded from reports)',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(quarantineAccountHandler),
-    )
-    .command(
-      'reactivate <id>',
-      'Reactivate an account (set status back to active)',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(reactivateAccountHandler),
-    )
-    .command(
-      'delete <id>',
-      'Permanently delete an account (fails if it still has linked transactions)',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
-          .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' }),
-      safe(deleteAccountHandler),
-    )
-    .command(
-      'merge <retain-id> <delete-id>',
-      "Merge <delete-id> into <retain-id> (destructive — deletes <delete-id>'s transactions and the account itself)",
-      (yargs) =>
-        localOptions(
-          yargs
-            .positional('retain-id', { describe: 'Account ID to keep', type: 'string' })
-            .positional('delete-id', { describe: 'Account ID to merge away and delete', type: 'string' }),
-        )
-          .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' })
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(mergeAccountsHandler),
-    )
-    .command(
-      'add-identifier <id> <value>',
-      "Add a value to the account's statement-matching identifier list",
-      (yargs) =>
-        localOptions(
-          yargs
-            .positional('id', { describe: 'Account ID', type: 'string' })
-            .positional('value', { describe: 'Identifier value to add', type: 'string' }),
-        )
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(addIdentifierHandler),
-    )
-    .command(
-      'remove-identifier <id> <value>',
-      "Remove a value from the account's statement-matching identifier list",
-      (yargs) =>
-        localOptions(
-          yargs
-            .positional('id', { describe: 'Account ID', type: 'string' })
-            .positional('value', { describe: 'Identifier value to remove', type: 'string' }),
-        )
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(removeIdentifierHandler),
-    )
-    .command(
-      'recalculate-opening-balance <id>',
-      'Recompute opening balance/date from the earliest statement on file',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Account ID', type: 'string' }))
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(recalculateOpeningBalanceHandler),
-    )
-    .demandCommand(
-      1,
-      'Specify an action: list, show, balance, create, update, retire, quarantine, reactivate, delete, merge, add-identifier, remove-identifier, recalculate-opening-balance',
-    );
+    .option('--output <path>', 'Write output to a file instead of stdout (for csv/json)')
+    .option('--totals', 'Show count, count-by-category, and opening_balance sum')
+    .action(safe(listAccountsHandler));
+
+  idCommand(accounts, 'show', 'Show an account by ID', showAccountHandler);
+
+  jsonOption(
+    accounts
+      .command('balance')
+      .description("Show an account's computed balance as of a date (defaults to today)")
+      .argument('<id>', 'Account ID')
+      .argument('[yyyy-mm-dd]', 'As-of date; defaults to today (local TZ)'),
+  ).action(safe(balanceAccountHandler));
+
+  accountFieldOptions(accounts.command('create').description('Create a new account'))
+    .requiredOption('--name <name>', 'Account name')
+    .action(safe(createAccountHandler));
+
+  accountFieldOptions(
+    accounts
+      .command('update')
+      .description('Update account fields (only passed flags are changed)')
+      .argument('<id>', 'Account ID'),
+  )
+    .option('--name <name>', 'Account name')
+    .action(safe(updateAccountHandler));
+
+  idCommand(
+    accounts,
+    'retire',
+    'Retire an account (closed but real; hidden from live UI, still counted in reports)',
+    retireAccountHandler,
+  );
+  idCommand(
+    accounts,
+    'quarantine',
+    'Quarantine an account (suspect data; hidden from live UI and excluded from reports)',
+    quarantineAccountHandler,
+  );
+  idCommand(
+    accounts,
+    'reactivate',
+    'Reactivate an account (set status back to active)',
+    reactivateAccountHandler,
+  );
+
+  accounts
+    .command('delete')
+    .description('Permanently delete an account (fails if it still has linked transactions)')
+    .argument('<id>', 'Account ID')
+    .option('-y, --yes', 'Skip confirmation')
+    .action(safe(deleteAccountHandler));
+
+  jsonOption(
+    accounts
+      .command('merge')
+      .description(
+        "Merge <delete-id> into <retain-id> (destructive — deletes <delete-id>'s transactions and the account itself)",
+      )
+      .argument('<retain-id>', 'Account ID to keep')
+      .argument('<delete-id>', 'Account ID to merge away and delete')
+      .option('-y, --yes', 'Skip confirmation'),
+  ).action(safe(mergeAccountsHandler));
+
+  jsonOption(
+    accounts
+      .command('add-identifier')
+      .description("Add a value to the account's statement-matching identifier list")
+      .argument('<id>', 'Account ID')
+      .argument('<value>', 'Identifier value to add'),
+  ).action(safe(addIdentifierHandler));
+
+  jsonOption(
+    accounts
+      .command('remove-identifier')
+      .description("Remove a value from the account's statement-matching identifier list")
+      .argument('<id>', 'Account ID')
+      .argument('<value>', 'Identifier value to remove'),
+  ).action(safe(removeIdentifierHandler));
+
+  idCommand(
+    accounts,
+    'recalculate-opening-balance',
+    'Recompute opening balance/date from the earliest statement on file',
+    recalculateOpeningBalanceHandler,
+  );
+
+  return accounts;
 }

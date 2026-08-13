@@ -1,110 +1,73 @@
-import { safe, listOptions, localOptions } from '../_helpers.js';
+/**
+ * Subtree builder for `fob-stm transactions <action>`.
+ */
 
+import { Command, Option } from 'commander';
+
+import { safe, listOptions, jsonOption } from '../_helpers.js';
 import { listTransactionsHandler } from './list.js';
 import { showTransactionHandler } from './show.js';
 import { editTransactionHandler } from './edit.js';
 
-export function buildTransactionsSubcommands(yargs) {
-  return yargs
-    .usage('$0 transactions <action> [options]')
-    .command(
-      'list',
-      'List transactions',
-      (yargs) =>
-        listOptions(yargs)
-          .option('account', {
-            describe: 'Filter by account ID(s), comma-separated for multiple',
-            type: 'string',
-          })
-          .option('currency', {
-            describe: 'Filter by account currency code (e.g. USD)',
-            type: 'string',
-          })
-          .option('statement', {
-            describe: 'Filter by statement ID(s), comma-separated for multiple',
-            type: 'string',
-          })
-          .option('from', { describe: 'Start date (YYYY-MM-DD)', type: 'string' })
-          .option('to', { describe: 'End date (YYYY-MM-DD)', type: 'string' })
-          .option('particulars', { describe: 'Filter by particulars (case-insensitive)', type: 'string' })
-          .option('comments', {
-            describe: "Filter by comments (case-insensitive; pass 'empty' for blank)",
-            type: 'string',
-          })
-          .option('entity', {
-            describe: "Filter by entity (case-insensitive; pass 'empty' for unset)",
-            type: 'string',
-          })
-          .option('category', {
-            describe: "Filter by category (case-insensitive; pass 'empty' for unset)",
-            type: 'string',
-          })
-          .option('type', { describe: 'Filter by transaction type', type: 'string' })
-          .option('amount-from', {
-            describe: 'Minimum amount (currency units, e.g. 100 = ₹100)',
-            type: 'number',
-          })
-          .option('amount-to', { describe: 'Maximum amount (currency units)', type: 'number' })
-          .option('flow', {
-            describe: 'Restrict --amount-from/--amount-to to inflow or outflow',
-            type: 'string',
-            choices: ['all', 'inflow', 'outflow'],
-          })
-          .option('sort', {
-            describe: 'Sort order by date',
-            type: 'string',
-            choices: ['asc', 'desc'],
-          })
-          .option('fields', {
-            describe:
-              'Columns to show, comma-separated (default: id,date,account,particulars,type,category,entity,currency,inflow,outflow)',
-            type: 'string',
-          })
-          .option('format', {
-            describe: 'Output format (renders whatever --limit/--page/--all selected)',
-            type: 'string',
-            choices: ['table', 'csv', 'json'],
-          })
-          .option('output', {
-            describe: 'Write output to a file instead of stdout (for csv/json)',
-            type: 'string',
-          })
-          .option('totals', {
-            describe: 'Show count + inflow/outflow sums + net, grouped by currency',
-            type: 'boolean',
-          }),
-      safe(listTransactionsHandler),
+export function buildTransactionsCommand() {
+  const transactions = new Command('transactions').description('Query transactions');
+
+  listOptions(transactions.command('list').description('List transactions'))
+    .option('--account <ids>', 'Filter by account ID(s), comma-separated for multiple')
+    .option('--currency <code>', 'Filter by account currency code (e.g. USD)')
+    .option('--statement <ids>', 'Filter by statement ID(s), comma-separated for multiple')
+    .option('--from <date>', 'Start date (YYYY-MM-DD)')
+    .option('--to <date>', 'End date (YYYY-MM-DD)')
+    .option('--particulars <text>', 'Filter by particulars (case-insensitive)')
+    .option('--comments <text>', "Filter by comments (case-insensitive; pass 'empty' for blank)")
+    .option('--entity <entity>', "Filter by entity (case-insensitive; pass 'empty' for unset)")
+    .option('--category <category>', "Filter by category (case-insensitive; pass 'empty' for unset)")
+    .option('--type <type>', 'Filter by transaction type')
+    .option('--amount-from <amount>', 'Minimum amount (currency units, e.g. 100 = ₹100)', Number)
+    .option('--amount-to <amount>', 'Maximum amount (currency units)', Number)
+    .addOption(
+      new Option('--flow <flow>', 'Restrict --amount-from/--amount-to to inflow or outflow').choices([
+        'all',
+        'inflow',
+        'outflow',
+      ]),
     )
-    .command(
-      'show <id>',
-      'Show a transaction by ID',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Transaction ID', type: 'string' }))
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(showTransactionHandler),
+    .addOption(new Option('--sort <order>', 'Sort order by date').choices(['asc', 'desc']))
+    .option(
+      '--fields <list>',
+      'Columns to show, comma-separated (default: id,date,account,particulars,type,category,entity,currency,inflow,outflow)',
     )
-    .command(
-      'edit <id>',
-      'Edit transaction metadata. Pass comma-separated IDs to bulk-edit.',
-      (yargs) =>
-        localOptions(
-          yargs.positional('id', {
-            describe: 'Transaction ID(s), comma-separated for bulk edit',
-            type: 'string',
-          }),
-        )
-          .option('entity', { describe: 'Set entity (counterparty). Pass "" to clear.', type: 'string' })
-          .option('category', { describe: 'Set category. Pass "" to clear.', type: 'string' })
-          .option('type', {
-            describe: 'Set transaction type (recognised: income, expense, transfer, asset, liability)',
-            type: 'string',
-          })
-          .option('po', { describe: 'Set PO. Pass "" to clear.', type: 'string' })
-          .option('comments', { describe: 'Set comments. Pass "" to clear.', type: 'string' })
-          .option('particulars', { describe: 'Set particulars (narration)', type: 'string' })
-          .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' })
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(editTransactionHandler),
+    .addOption(
+      new Option('--format <format>', 'Output format (renders whatever --limit/--page/--all selected)').choices([
+        'table',
+        'csv',
+        'json',
+      ]),
     )
-    .demandCommand(1, 'Specify an action: list, show, edit');
+    .option('--output <path>', 'Write output to a file instead of stdout (for csv/json)')
+    .option('--totals', 'Show count + inflow/outflow sums + net, grouped by currency')
+    .action(safe(listTransactionsHandler));
+
+  jsonOption(
+    transactions
+      .command('show')
+      .description('Show a transaction by ID')
+      .argument('<id>', 'Transaction ID'),
+  ).action(safe(showTransactionHandler));
+
+  jsonOption(
+    transactions
+      .command('edit')
+      .description('Edit transaction metadata. Pass comma-separated IDs to bulk-edit.')
+      .argument('<id>', 'Transaction ID(s), comma-separated for bulk edit')
+      .option('--entity <entity>', 'Set entity (counterparty). Pass "" to clear.')
+      .option('--category <category>', 'Set category. Pass "" to clear.')
+      .option('--type <type>', 'Set transaction type (recognised: income, expense, transfer, asset, liability)')
+      .option('--po <po>', 'Set PO. Pass "" to clear.')
+      .option('--comments <text>', 'Set comments. Pass "" to clear.')
+      .option('--particulars <text>', 'Set particulars (narration)')
+      .option('-y, --yes', 'Skip confirmation'),
+  ).action(safe(editTransactionHandler));
+
+  return transactions;
 }

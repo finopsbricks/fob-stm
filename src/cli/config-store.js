@@ -21,7 +21,7 @@ const CONFIG_PATH = join(CONFIG_DIR, 'config.yml');
 
 let orgOverride = null;
 
-/** Set by the `--profile <name>` global flag (alias `--org`; yargs middleware). Beats env + current_org. */
+/** Set by the `--profile <name>` global flag (alias `--org`; set in the root preAction hook). Beats env + current_org. */
 export function setOrgOverride(name) {
   orgOverride = name;
 }

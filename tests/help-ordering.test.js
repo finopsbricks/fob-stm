@@ -12,36 +12,67 @@ function helpHeadings(args) {
   });
   return out
     .split('\n')
-    .filter((l) => /^(Positionals:|Options:|Global Options:)$/.test(l));
+    .filter((l) => /^(Arguments:|Options:|Global Options:)$/.test(l));
 }
 
 describe('help layout', () => {
-  it('shows a command\'s own options above the inherited global ones', () => {
-    // accounts show: Positionals (id) → Options (json) → Global Options (profile/help/version)
+  it("shows a command's own options above the inherited global ones", () => {
+    // accounts show: Arguments (id) → Options (json) → Global Options (profile/help)
     expect(helpHeadings('accounts show')).toEqual([
-      'Positionals:',
+      'Arguments:',
       'Options:',
       'Global Options:',
     ]);
   });
 
-  it('keeps positionals first when field options are bundled before the positional', () => {
-    // rules create bundles its field options; the positional must still lead.
+  it('keeps positional arguments first when field options are bundled before them', () => {
+    // rules create bundles its field options; the argument must still lead.
     expect(helpHeadings('rules create')).toEqual([
-      'Positionals:',
+      'Arguments:',
       'Options:',
       'Global Options:',
     ]);
   });
 
-  it('omits an empty Options group for commands with no local options', () => {
+  it('groups global options under their own heading even without arguments', () => {
+    expect(helpHeadings('categories list')).toEqual(['Options:', 'Global Options:']);
+  });
+
+  it('renders arguments, then options, then globals for a command with no flags of its own', () => {
+    // `config profiles use <name>` declares no options. The Options: group is
+    // still shown because -h/--help lives there — unlike the previous parser,
+    // which omitted the heading entirely. Ordering is what this suite guards.
     expect(helpHeadings('config profiles use')).toEqual([
-      'Positionals:',
+      'Arguments:',
+      'Options:',
       'Global Options:',
     ]);
   });
+});
 
-  it('groups global options under their own heading even without positionals', () => {
-    expect(helpHeadings('categories list')).toEqual(['Options:', 'Global Options:']);
+describe('help formatting', () => {
+  it('lists bare subcommand names, without repeating the parent command path', () => {
+    const out = execFileSync('node', [bin, 'accounts', '--help'], { encoding: 'utf8' });
+    expect(out).toMatch(/^ {2}show <id> {2,}Show an account by ID$/m);
+    expect(out).not.toMatch(/fob-stm accounts show/);
+  });
+
+  it('surfaces command aliases in the listing', () => {
+    const out = execFileSync('node', [bin, 'config', 'profiles', '--help'], { encoding: 'utf8' });
+    expect(out).toMatch(/remove\|rm <name>/);
+    expect(out).toMatch(/current\|whoami/);
+  });
+
+  it('wraps long descriptions on word boundaries, indented to the description column', () => {
+    const out = execFileSync('node', [bin, 'accounts', '--help'], {
+      encoding: 'utf8',
+      env: { ...process.env, COLUMNS: '92' },
+    });
+    // No line may exceed the terminal width, and no word may be split across
+    // lines (the failure mode of the previous parser: "fr|om", "[yyyy-mm-d|d]").
+    for (const line of out.split('\n')) {
+      expect(line.length).toBeLessThanOrEqual(100);
+    }
+    expect(out).not.toMatch(/\w-\n/);
   });
 });

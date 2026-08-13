@@ -1,43 +1,24 @@
-import { safe, localOptions } from '../_helpers.js';
+/**
+ * Subtree builder for `fob-stm categories <action>`.
+ */
+
+import { Command } from 'commander';
+
+import { safe } from '../_helpers.js';
+import { aggregateListOptions } from '../_aggregate-options.js';
 import { listCategoriesHandler } from './list.js';
 
-function categoriesEntitiesListOptions(yargs) {
-  return localOptions(yargs)
-    .option('from', { describe: 'Start date (YYYY-MM-DD), required', type: 'string', demandOption: true })
-    .option('to', { describe: 'End date (YYYY-MM-DD), required', type: 'string', demandOption: true })
-    .option('accounts', { describe: 'Filter to account IDs (comma-separated)', type: 'string' })
-    .option('type', {
-      describe: 'Filter by transaction type',
-      type: 'string',
-      choices: ['income', 'expense', 'asset', 'liability', 'transfer', 'unknown'],
-    })
-    .option('fields', {
-      describe: 'Columns to show, comma-separated (default: category|entity,type,count,inflow,outflow)',
-      type: 'string',
-    })
-    .option('format', {
-      describe: 'Output format',
-      type: 'string',
-      choices: ['table', 'csv', 'json'],
-    })
-    .option('output', {
-      describe: 'Write output to a file instead of stdout (for csv/json)',
-      type: 'string',
-    })
-    .option('totals', {
-      describe: 'Show count + inflow/outflow sums over all matching transactions',
-      type: 'boolean',
-    });
-}
+export function buildCategoriesCommand() {
+  const categories = new Command('categories').description('Query category aggregates (read-only)');
 
-export function buildCategoriesSubcommands(yargs) {
-  return yargs
-    .usage('$0 categories <action> [options]')
-    .command(
-      'list',
-      'List categories with period-aggregated count and inflow/outflow (read-only; mirrors the Categories page)',
-      categoriesEntitiesListOptions,
-      safe(listCategoriesHandler),
-    )
-    .demandCommand(1, 'Specify an action: list');
+  aggregateListOptions(
+    categories
+      .command('list')
+      .description(
+        'List categories with period-aggregated count and inflow/outflow (read-only; mirrors the Categories page)',
+      ),
+    'category,type,count,inflow,outflow',
+  ).action(safe(listCategoriesHandler));
+
+  return categories;
 }

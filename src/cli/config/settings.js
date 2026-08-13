@@ -26,7 +26,7 @@ export async function listSettingsHandler(argv) {
 }
 
 export async function setSettingsHandler(argv) {
-  // yargs gives us `key` and `value` positionals; only amount-display is known.
+  // `key` and `value` arrive as positionals; only amount-display is known.
   const { key, value } = argv;
   if (key !== 'amount-display') {
     throw new Error(`Unknown setting '${key}'. Known settings: amount-display.`);

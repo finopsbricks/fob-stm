@@ -1,4 +1,13 @@
-import { safe, localOptions } from '../_helpers.js';
+/**
+ * `fob-stm config <resource> <action>` — commander port of src/cli/config/index.js.
+ *
+ * The only three-level subtree, and the only one using command aliases
+ * (`profiles|orgs`, `current|whoami`, `remove|rm`).
+ */
+
+import { Command } from 'commander';
+
+import { safe, jsonOption } from '../_helpers.js';
 import { DEFAULT_API_URL } from '../../http.js';
 import { addConfigHandler } from './add.js';
 import { listConfigHandler } from './list.js';
@@ -13,27 +22,21 @@ import { AMOUNT_DISPLAY_MODES } from '../config-store.js';
  * Global (non-profile) CLI preferences. Kept a sibling namespace of `profiles`
  * so `config` stays the umbrella: `fob-stm config settings <action>`.
  */
-function buildSettingsSubcommands(yargs) {
-  return yargs
-    .usage('$0 config settings <action> [options]')
-    .command(
-      'list',
-      'Show current CLI settings',
-      (y) => localOptions(y).option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(listSettingsHandler),
-    )
-    .command(
-      'set <key> <value>',
-      `Set a setting (e.g. amount-display ${AMOUNT_DISPLAY_MODES.join('|')})`,
-      (y) =>
-        localOptions(
-          y
-            .positional('key', { describe: 'Setting name (amount-display)', type: 'string' })
-            .positional('value', { describe: 'New value', type: 'string' }),
-        ),
-      safe(setSettingsHandler),
-    )
-    .demandCommand(1, 'Specify an action: list, set');
+function buildSettingsCommand() {
+  const settings = new Command('settings').description('View or change global CLI settings');
+
+  jsonOption(settings.command('list').description('Show current CLI settings')).action(
+    safe(listSettingsHandler),
+  );
+
+  settings
+    .command('set')
+    .description(`Set a setting (e.g. amount-display ${AMOUNT_DISPLAY_MODES.join('|')})`)
+    .argument('<key>', 'Setting name (amount-display)')
+    .argument('<value>', 'New value')
+    .action(safe(setSettingsHandler));
+
+  return settings;
 }
 
 /**
@@ -41,70 +44,57 @@ function buildSettingsSubcommands(yargs) {
  * profiles map 1:1 to statements orgs, so `orgs` is offered as an alias. `config`
  * is a namespace, not the object: `fob-stm config profiles <action>`.
  */
-function buildProfilesSubcommands(yargs) {
-  return yargs
-    .usage('$0 config profiles <action> [options]')
-    .command(
-      'list',
-      'List profiles (current marked with *)',
-      (y) => localOptions(y).option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(listConfigHandler),
-    )
-    .command(
-      ['current', 'whoami'],
-      'Show the active profile + resolution source',
-      (y) => localOptions(y).option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(currentConfigHandler),
-    )
-    .command(
-      'add <name>',
-      "Add or update a profile's statements credentials",
-      (y) =>
-        localOptions(y.positional('name', { describe: 'Profile name', type: 'string' }))
-          .option('api-url', {
-            describe: `API base URL (origin only). Optional; defaults to ${DEFAULT_API_URL}`,
-            type: 'string',
-            default: DEFAULT_API_URL,
-          })
-          .option('api-key', { describe: 'API key', type: 'string', demandOption: true })
-          .option('api-secret', { describe: 'API secret', type: 'string', demandOption: true }),
-      safe(addConfigHandler),
-    )
-    .command(
-      'use <name>',
-      'Set the current profile',
-      (y) => y.positional('name', { describe: 'Profile name', type: 'string' }),
-      safe(useConfigHandler),
-    )
-    .command(
-      ['remove <name>', 'rm <name>'],
-      'Remove a profile',
-      (y) => y.positional('name', { describe: 'Profile name', type: 'string' }),
-      safe(removeConfigHandler),
-    )
-    .command(
-      'refresh [name]',
-      "Refresh a profile's org identity from the server (--all for every profile)",
-      (y) =>
-        localOptions(y.positional('name', { describe: 'Profile name (omit with --all)', type: 'string' }))
-          .option('all', { describe: 'Refresh every profile', type: 'boolean' }),
-      safe(refreshConfigHandler),
-    )
-    .demandCommand(1, 'Specify an action: list, current, add, use, remove, refresh');
+function buildProfilesCommand() {
+  const profiles = new Command('profiles')
+    .alias('orgs')
+    .description('Manage credential profiles (alias: orgs)');
+
+  jsonOption(profiles.command('list').description('List profiles (current marked with *)')).action(
+    safe(listConfigHandler),
+  );
+
+  jsonOption(
+    profiles
+      .command('current')
+      .alias('whoami')
+      .description('Show the active profile + resolution source'),
+  ).action(safe(currentConfigHandler));
+
+  profiles
+    .command('add')
+    .description("Add or update a profile's statements credentials")
+    .argument('<name>', 'Profile name')
+    .option('--api-url <url>', `API base URL (origin only). Optional; defaults to ${DEFAULT_API_URL}`, DEFAULT_API_URL)
+    .requiredOption('--api-key <key>', 'API key')
+    .requiredOption('--api-secret <secret>', 'API secret')
+    .action(safe(addConfigHandler));
+
+  profiles
+    .command('use')
+    .description('Set the current profile')
+    .argument('<name>', 'Profile name')
+    .action(safe(useConfigHandler));
+
+  profiles
+    .command('remove')
+    .alias('rm')
+    .description('Remove a profile')
+    .argument('<name>', 'Profile name')
+    .action(safe(removeConfigHandler));
+
+  profiles
+    .command('refresh')
+    .description("Refresh a profile's org identity from the server (--all for every profile)")
+    .argument('[name]', 'Profile name (omit with --all)')
+    .option('--all', 'Refresh every profile')
+    .action(safe(refreshConfigHandler));
+
+  return profiles;
 }
 
-export function buildConfigSubcommands(yargs) {
-  return yargs
-    .usage('$0 config <resource> <action> [options]')
-    .command(
-      ['profiles', 'orgs'],
-      'Manage credential profiles (alias: orgs)',
-      buildProfilesSubcommands,
-    )
-    .command(
-      'settings',
-      'View or change global CLI settings',
-      buildSettingsSubcommands,
-    )
-    .demandCommand(1, 'Specify a resource: profiles (alias: orgs), settings');
+export function buildConfigCommand() {
+  return new Command('config')
+    .description('Manage credential profiles (alias: orgs)')
+    .addCommand(buildProfilesCommand())
+    .addCommand(buildSettingsCommand());
 }

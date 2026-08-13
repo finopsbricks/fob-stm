@@ -1,4 +1,13 @@
-import { safe, paginationOptions, listOptions, localOptions } from '../_helpers.js';
+/**
+ * `fob-stm rules <action>` — commander port of src/cli/rules/index.js.
+ *
+ * The most demanding resource in the tree: repeatable options, mutually
+ * exclusive flags, a per-command argv transform, and a usage example.
+ */
+
+import { Command, Option } from 'commander';
+
+import { safe, listOptions, paginationOptions, jsonOption } from '../_helpers.js';
 import { OPERATORS } from './_rule-args.js';
 import { listRulesHandler } from './list.js';
 import { showRuleHandler } from './show.js';
@@ -8,151 +17,130 @@ import { runRuleHandler } from './run.js';
 import { previewRuleHandler } from './preview.js';
 import { deleteRuleHandler } from './delete.js';
 
-export function buildRulesSubcommands(yargs) {
-  return yargs
-    .usage('$0 rules <action> [options]')
-    .command(
-      'list',
-      'List rules (sorted by priority ASC then created_at DESC; server-side)',
-      (yargs) =>
-        listOptions(yargs)
-          .option('enabled', {
-            describe: 'Filter by enabled (true | false)',
-            type: 'boolean',
-          })
-          .option('name', {
-            describe: 'Filter by name substring (case-insensitive)',
-            type: 'string',
-          })
-          .option('condition-op', {
-            describe: 'Filter by condition operator(s), comma-separated (OR-combined, e.g. equals,contains)',
-            type: 'string',
-          })
-          .option('condition-field', {
-            describe: 'Filter by condition field name(s), comma-separated (OR-combined)',
-            type: 'string',
-          })
-          .option('action-field', {
-            describe: 'Filter by action field name(s), comma-separated (OR-combined)',
-            type: 'string',
-          })
-          .option('sort-by', {
-            describe: 'Sort column (default: priority)',
-            type: 'string',
-            choices: ['priority', 'name', 'created_at'],
-          })
-          .option('sort-order', {
-            describe: 'Sort direction (default: ASC)',
-            type: 'string',
-            choices: ['ASC', 'DESC', 'asc', 'desc'],
-          })
-          .option('fields', {
-            describe:
-              'Columns to show, comma-separated (default: id,name,priority,enabled,conditions_count,actions_count,match_count)',
-            type: 'string',
-          })
-          .option('format', {
-            describe: 'Output format (renders whatever --limit/--page/--all selected)',
-            type: 'string',
-            choices: ['table', 'csv', 'json'],
-          })
-          .option('output', {
-            describe: 'Write output to a file instead of stdout (for csv/json)',
-            type: 'string',
-          })
-          .option('totals', {
-            describe: 'Show count + enabled count + disabled count',
-            type: 'boolean',
-          }),
-      safe(listRulesHandler),
+export function buildRulesCommand() {
+  const rules = new Command('rules').description('Query categorization rules');
+
+  listOptions(
+    rules
+      .command('list')
+      .description('List rules (sorted by priority ASC then created_at DESC; server-side)'),
+  )
+    .option('--enabled', 'Filter to enabled rules')
+    .option('--no-enabled', 'Filter to disabled rules')
+    .option('--name <substring>', 'Filter by name substring (case-insensitive)')
+    .option(
+      '--condition-op <ops>',
+      'Filter by condition operator(s), comma-separated (OR-combined, e.g. equals,contains)',
     )
-    .command(
-      'show <id>',
-      'Show a rule by ID',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(showRuleHandler),
+    .option('--condition-field <fields>', 'Filter by condition field name(s), comma-separated (OR-combined)')
+    .option('--action-field <fields>', 'Filter by action field name(s), comma-separated (OR-combined)')
+    .addOption(
+      new Option('--sort-by <column>', 'Sort column (default: priority)').choices([
+        'priority',
+        'name',
+        'created_at',
+      ]),
     )
-    .command(
-      'create <name>',
-      'Create a categorization rule (auto-applies to future uploads)',
-      (yargs) =>
-        localOptions(yargs.positional('name', { describe: 'Rule name', type: 'string' }))
-          .option('match', {
-            describe:
-              `Condition "field:operator:value" (repeatable; ALL must match). Operators: ${OPERATORS.join(', ')}`,
-            type: 'string',
-            array: true,
-          })
-          .option('set', {
-            describe: 'Action "field=value" (repeatable). Only fills empty fields on apply.',
-            type: 'string',
-            array: true,
-          })
-          .option('priority', { describe: 'Priority (lower = evaluated first; default 50)', type: 'number' })
-          .option('description', { describe: 'Rule description', type: 'string' })
-          .option('rationale', { describe: 'Why the rule exists', type: 'string' })
-          .option('disabled', { describe: 'Create the rule disabled (does not apply)', type: 'boolean' })
-          .option('conditions-json', { describe: 'Raw conditions JSON array (overrides --match)', type: 'string' })
-          .option('actions-json', { describe: 'Raw actions JSON array (overrides --set)', type: 'string' })
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' })
-          .example('$0 rules create "Uber" --match particulars:contains:uber --set entity=Uber --set "category=business expenses" --set type=expense', ''),
-      safe(createRuleHandler),
+    .addOption(
+      new Option('--sort-order <order>', 'Sort direction (default: ASC)').choices([
+        'ASC',
+        'DESC',
+        'asc',
+        'desc',
+      ]),
     )
-    .command(
-      'edit <id>',
-      'Edit a rule (--match/--set replace conditions/actions wholesale)',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
-          .option('name', { describe: 'New name', type: 'string' })
-          .option('priority', { describe: 'New priority', type: 'number' })
-          .option('enable', { describe: 'Enable the rule', type: 'boolean' })
-          .option('disable', { describe: 'Disable the rule', type: 'boolean' })
-          .option('description', { describe: 'New description', type: 'string' })
-          .option('rationale', { describe: 'New rationale', type: 'string' })
-          .option('match', { describe: 'Replace conditions: "field:operator:value" (repeatable)', type: 'string', array: true })
-          .option('set', { describe: 'Replace actions: "field=value" (repeatable)', type: 'string', array: true })
-          .option('conditions-json', { describe: 'Raw conditions JSON array (overrides --match)', type: 'string' })
-          .option('actions-json', { describe: 'Raw actions JSON array (overrides --set)', type: 'string' })
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' })
-          .conflicts('enable', 'disable')
-          .middleware((argv) => {
-            if (argv.enable) argv.enabled = true;
-            if (argv.disable) argv.enabled = false;
-          }),
-      safe(editRuleHandler),
+    .option(
+      '--fields <list>',
+      'Columns to show, comma-separated (default: id,name,priority,enabled,conditions_count,actions_count,match_count)',
     )
-    .command(
-      'run <id>',
-      "Apply a rule to existing transactions (default: only type='unknown')",
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
-          .option('force-all', {
-            describe: 'Apply to all matching transactions, not just type=unknown',
-            type: 'boolean',
-          })
-          .option('json', { describe: 'Output raw JSON', type: 'boolean' }),
-      safe(runRuleHandler),
+    .addOption(
+      new Option('--format <format>', 'Output format (renders whatever --limit/--page/--all selected)').choices([
+        'table',
+        'csv',
+        'json',
+      ]),
     )
-    .command(
-      'preview <id>',
-      "Dry-run a rule — see which transactions it would match, without applying it (default: only type='unknown')",
-      (yargs) =>
-        paginationOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
-          .option('force-all', {
-            describe: 'Preview against all matching transactions, not just type=unknown',
-            type: 'boolean',
-          }),
-      safe(previewRuleHandler),
-    )
-    .command(
-      'delete <id>',
-      'Permanently delete a rule',
-      (yargs) =>
-        localOptions(yargs.positional('id', { describe: 'Rule ID', type: 'string' }))
-          .option('yes', { describe: 'Skip confirmation', type: 'boolean', alias: 'y' }),
-      safe(deleteRuleHandler),
-    )
-    .demandCommand(1, 'Specify an action: list, show, create, edit, run, preview, delete');
+    .option('--output <path>', 'Write output to a file instead of stdout (for csv/json)')
+    .option('--totals', 'Show count + enabled count + disabled count')
+    .action(safe(listRulesHandler));
+
+  jsonOption(rules.command('show').description('Show a rule by ID').argument('<id>', 'Rule ID')).action(
+    safe(showRuleHandler),
+  );
+
+  jsonOption(
+    rules
+      .command('create')
+      .description('Create a categorization rule (auto-applies to future uploads)')
+      .argument('<name>', 'Rule name')
+      // `<v...>` is the repeatable form: --match a --match b collects into an array.
+      .option(
+        '--match <condition...>',
+        `Condition "field:operator:value" (repeatable; ALL must match). Operators: ${OPERATORS.join(', ')}`,
+      )
+      .option('--set <action...>', 'Action "field=value" (repeatable). Only fills empty fields on apply.')
+      .option('--priority <n>', 'Priority (lower = evaluated first; default 50)', Number)
+      .option('--description <text>', 'Rule description')
+      .option('--rationale <text>', 'Why the rule exists')
+      .option('--disabled', 'Create the rule disabled (does not apply)')
+      .option('--conditions-json <json>', 'Raw conditions JSON array (overrides --match)')
+      .option('--actions-json <json>', 'Raw actions JSON array (overrides --set)')
+      .addHelpText(
+        'after',
+        '\nExample:\n  $ fob-stm rules create "Uber" --match particulars:contains:uber --set entity=Uber \\\n      --set "category=business expenses" --set type=expense',
+      ),
+  ).action(safe(createRuleHandler));
+
+  jsonOption(
+    rules
+      .command('edit')
+      .description('Edit a rule (--match/--set replace conditions/actions wholesale)')
+      .argument('<id>', 'Rule ID')
+      .option('--name <name>', 'New name')
+      .option('--priority <n>', 'New priority', Number)
+      .addOption(new Option('--enable', 'Enable the rule').conflicts('disable'))
+      .addOption(new Option('--disable', 'Disable the rule'))
+      .option('--description <text>', 'New description')
+      .option('--rationale <text>', 'New rationale')
+      .option('--match <condition...>', 'Replace conditions: "field:operator:value" (repeatable)')
+      .option('--set <action...>', 'Replace actions: "field=value" (repeatable)')
+      .option('--conditions-json <json>', 'Raw conditions JSON array (overrides --match)')
+      .option('--actions-json <json>', 'Raw actions JSON array (overrides --set)'),
+  ).action(
+    // Fold the mutually exclusive --enable/--disable into the single `enabled`
+    // field the handler expects. There is no per-command hook, so it runs here.
+    safe(async (argv) => {
+      if (argv.enable) argv.enabled = true;
+      if (argv.disable) argv.enabled = false;
+      await editRuleHandler(argv);
+    }),
+  );
+
+  jsonOption(
+    rules
+      .command('run')
+      .description("Apply a rule to existing transactions (default: only type='unknown')")
+      .argument('<id>', 'Rule ID')
+      .option('--force-all', 'Apply to all matching transactions, not just type=unknown'),
+  ).action(safe(runRuleHandler));
+
+  paginationOptions(
+    rules
+      .command('preview')
+      .description(
+        "Dry-run a rule — see which transactions it would match, without applying it (default: only type='unknown')",
+      )
+      .argument('<id>', 'Rule ID'),
+  )
+    .option('--force-all', 'Preview against all matching transactions, not just type=unknown')
+    .action(safe(previewRuleHandler));
+
+  rules
+    .command('delete')
+    .description('Permanently delete a rule')
+    .argument('<id>', 'Rule ID')
+    .option('-y, --yes', 'Skip confirmation')
+    .action(safe(deleteRuleHandler));
+
+  return rules;
 }
