@@ -9,6 +9,7 @@ const EXT_MIME_TYPES = {
   '.csv': 'text/csv',
   '.xls': 'application/vnd.ms-excel',
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.txt': 'text/plain',
 };
 
 export async function uploadStatementHandler(argv) {
@@ -22,7 +23,7 @@ export async function uploadStatementHandler(argv) {
   const mime = EXT_MIME_TYPES[ext];
   if (!mime) {
     throw new Error(
-      `Unsupported file type '${ext || file}'. Accepted: .pdf, .csv, .xls, .xlsx`,
+      `Unsupported file type '${ext || file}'. Accepted: .pdf, .csv, .xls, .xlsx, .txt`,
     );
   }
 

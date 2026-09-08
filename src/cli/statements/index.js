@@ -95,7 +95,7 @@ export function buildStatementsCommand() {
   jsonOption(
     statements
       .command('upload')
-      .description('Upload a statement file (pdf/csv/xls/xlsx) and start processing')
+      .description('Upload a statement file (pdf/csv/xls/xlsx/txt) and start processing')
       .argument('<file>', 'Path to the statement file')
       .option('--account <id>', 'Pre-assign to an account ID (skips auto-detection)')
       .option('--parser-type <type>', 'Force a specific parser (e.g. hdfc_savings__pdf)'),
