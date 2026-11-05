@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `--org` and `--profile` now select the named profile. Since the commander migration in 0.7.0
+  both were accepted but ignored, so every command ran against the current profile.
+
 ## [0.7.0] - 2026-08-13
 
 ### Changed

@@ -47,8 +47,9 @@ export function run(argv) {
     )
     // Runs before any action handler, at any depth.
     .hook('preAction', (thisCommand) => {
-      const { profile } = thisCommand.opts();
-      if (profile) setOrgOverride(profile);
+      // Commander stores the option under its last flag, so `--profile` lands in `org` too.
+      const { org } = thisCommand.opts();
+      if (org) setOrgOverride(org);
     });
 
   program
