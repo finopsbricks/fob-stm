@@ -1,6 +1,6 @@
 # Fix `--org` / `--profile` Being Ignored
 
-## Status: IN PROGRESS (~75%)
+## Status: IN PROGRESS (~85%)
 
 `fob-stm` silently ignores `--org` and `--profile` and uses `current_org` instead. Line SI in
 factory-alex passes `--org alex`, so personal statements have been uploading to the Chisel org.
@@ -63,7 +63,8 @@ may rely on the current default.
 - [x] Read `opts().org` in the `preAction` hook in `src/cli/index.js`
 - [x] Add a test through `run()` for both `--org` and `--profile`
 - [x] Commit from the Mac (`3723ee1`)
-- [ ] Push and release `fob-stm`
+- [x] Push (`81fdd84`)
+- [ ] Release `fob-stm`
 - [x] Confirm `fob-stm config profiles current --org alex` returns the alex org
 
 ### Phase 3: Check other callers 🔄
@@ -83,10 +84,9 @@ may rely on the current default.
 ### Phase 5: Confirm ✅
 - [x] Confirm the next SI upload lands in `alex` (si-115 and si-117, 2026-11-05)
 
-### Phase 6: Leftovers ❌
-- [ ] Decide on the empty `ICICI Bank 0131` account (`KCBd1642z3Hb`) the misroute created in Chisel
-- [ ] Decide on si-111 (`GqLLjsQSWq8Q`): the statement is in no org, leaving a gap in `alex`
-      after 2026-10-02
+### Phase 6: Leftovers ✅
+- [x] Deleted the empty `ICICI Bank 0131` account (`KCBd1642z3Hb`) from Chisel
+- [x] Re-uploaded si-111 to `alex` as `3bZld1hfLQjI`, closing the 2026-10-03 to 2026-10-09 gap
 
 ## Related Files
 
