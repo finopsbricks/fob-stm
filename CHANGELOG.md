@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-06
+
+### Added
+- `statements upload` accepts `.txt` statement files.
+
 ### Fixed
 - `--org` and `--profile` now select the named profile. Since the commander migration in 0.7.0
   both were accepted but ignored, so every command ran against the current profile.
