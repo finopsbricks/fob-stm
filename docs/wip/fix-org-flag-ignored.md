@@ -1,6 +1,6 @@
 # Fix `--org` / `--profile` Being Ignored
 
-## Status: IN PROGRESS (~85%)
+## Status: IN PROGRESS (~75%)
 
 `fob-stm` silently ignores `--org` and `--profile` and uses `current_org` instead. Line SI in
 factory-alex passes `--org alex`, so personal statements have been uploading to the Chisel org.
@@ -66,8 +66,12 @@ may rely on the current default.
 - [ ] Push and release `fob-stm`
 - [x] Confirm `fob-stm config profiles current --org alex` returns the alex org
 
-### Phase 3: Check other callers ✅
+### Phase 3: Check other callers 🔄
 - [x] `fobs stm` is not affected: it is on yargs and its `--org` middleware works
+- [ ] Check `ops/bookkeeping` runs since 2026-08-13. These pass `--org` or `--profile`, so they ran
+      against `current_org`: `fetch-accounts.js`, `reconcile-period.js`, `analyze-overlaps.mjs`,
+      `check-anchor.mjs` (reads) and `label-unknown-transactions.js --apply`, `rename-statement.js`
+      (writes). `fetch-statements.js` and the `bookkeeping-alex` jobs need the same check
 - [x] All 121 SI uploads checked: 112 in `alex`, 8 in Chisel (the table above), 1 in neither (si-111)
 
 ### Phase 4: Move the statements ✅
