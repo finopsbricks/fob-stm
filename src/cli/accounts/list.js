@@ -8,7 +8,7 @@ import {
   formatCsv,
   formatDate,
 } from '../utils/format.js';
-import { buildColumnSelector, parseStatus, resolveListScope, formatScopeHint } from '../utils/list.js';
+import { buildColumnSelector, parseStatus, resolveListScope, scopePagination, formatScopeHint } from '../utils/list.js';
 
 // Public fields the API exposes (mirrors statements app PUBLIC_FIELDS).
 const PUBLIC_FIELDS = [
@@ -89,15 +89,18 @@ export async function listAccountsHandler(argv) {
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
 
-  const { rows: accounts, allRows, truncated, pageContext } = await resolveListScope(argv, {
+  const scope = await resolveListScope(argv, {
     list: stm.accounts.list,
     getAll: stm.accounts.getAll,
     searchParams: buildSearchParams(argv),
   });
+  const { rows: accounts, allRows, truncated } = scope;
+  const pagination = scopePagination(argv, scope);
   const totals = argv.totals ? computeTotals(allRows) : null;
 
   if (format === 'json') {
-    const payload = { data: accounts, count: accounts.length, truncated };
+    /** @type {Record<string, any>} */
+    const payload = { data: accounts, count: accounts.length, ...pagination, truncated };
     if (totals) payload.totals = totals;
     emit(JSON.stringify(payload, null, 2), argv.output);
   } else if (format === 'csv') {
@@ -112,12 +115,12 @@ export async function listAccountsHandler(argv) {
           align: selector.alignFor(fields),
         }),
       );
-      const hint = formatScopeHint(argv, { rows: accounts, allRows, pageContext });
-      if (hint) console.log(`\n${hint}`);
     }
     if (totals) console.log(renderTotals(totals, truncated));
   }
 
+  const hint = formatScopeHint(argv, scope);
+  if (hint) console.error(hint);
   if (truncated) {
     console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
   }

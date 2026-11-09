@@ -8,7 +8,7 @@ import {
   formatCsv,
 } from '../utils/format.js';
 import { scaleMilliAmount, amountMode } from '../utils/amounts.js';
-import { buildColumnSelector, resolveListScope, formatScopeHint } from '../utils/list.js';
+import { buildColumnSelector, resolveListScope, scopePagination, formatScopeHint } from '../utils/list.js';
 
 // Milli-unit fields on a transaction that the amount-display setting governs.
 const MONEY_FIELDS = ['inflow', 'outflow', 'balance'];
@@ -158,15 +158,18 @@ export async function listTransactionsHandler(argv) {
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
 
-  const { rows: txns, allRows, truncated, pageContext } = await resolveListScope(argv, {
+  const scope = await resolveListScope(argv, {
     list: stm.transactions.list,
     getAll: stm.transactions.getAll,
     searchParams: buildSearchParams(argv),
   });
+  const { rows: txns, allRows, truncated } = scope;
+  const pagination = scopePagination(argv, scope);
   const totals = argv.totals ? computeTotals(allRows) : null;
 
   if (format === 'json') {
-    const payload = { data: txns.map(scaleTxn), count: txns.length, truncated };
+    /** @type {Record<string, any>} */
+    const payload = { data: txns.map(scaleTxn), count: txns.length, ...pagination, truncated };
     if (totals) {
       // Keyed by currency; never a cross-currency sum.
       const by_currency = {};
@@ -194,12 +197,12 @@ export async function listTransactionsHandler(argv) {
           align: selector.alignFor(fields),
         }),
       );
-      const hint = formatScopeHint(argv, { rows: txns, allRows, pageContext });
-      if (hint) console.log(`\n${hint}`);
     }
     if (totals) console.log(renderTotals(totals, truncated));
   }
 
+  const hint = formatScopeHint(argv, scope);
+  if (hint) console.error(hint);
   if (truncated) {
     console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
   }

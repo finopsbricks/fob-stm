@@ -51,20 +51,50 @@ export async function resolveListScope(argv, { list, getAll, searchParams }) {
 }
 
 /**
- * Table-format "there's more" footer for a resolveListScope() result. Mirrors
- * formatPaginationHint() for the plain single-page case; when `--totals`
- * forced a full fetch without `--all`, builds the equivalent hint from the
- * displayed slice vs the full fetched set. Returns null once everything is
- * already shown (`--all`, or no further pages).
+ * Pagination facts for a resolveListScope() result, for machine output
+ * (`--json`, `--format json`) to carry next to `data`/`count`/`truncated`:
+ *  - single page: `total`, `page` and `has_more` come from the API's
+ *    `page_context`;
+ *  - `--totals` without `--all`: computed from the full fetched set;
+ *  - `--all`: one result covering every page, so `page` is null.
+ * `total` is null when the count is unknown (the `--all` cap was hit, or the
+ * API sent no total). `has_more` is true whenever rows exist beyond `data`.
+ *
+ * @param {{ all?: boolean, page?: number, limit?: number }} argv
+ * @param {{ rows: any[], allRows: any[]|null, truncated: boolean, pageContext: object|null }} scope
+ * @returns {{ total: number|null, page: number|null, has_more: boolean }}
  */
-export function formatScopeHint(argv, { rows, allRows, pageContext }) {
-  if (argv.all) return null;
+export function scopePagination(argv, { rows, allRows, truncated, pageContext }) {
   if (allRows) {
-    if (allRows.length <= rows.length) return null;
-    const truncatedSuffix = allRows.length >= MAX_ALL_ROWS ? '+ (truncated)' : '';
-    return `(showing ${rows.length} of ${allRows.length}${truncatedSuffix}; use --page ${(argv.page ?? 1) + 1} for more)`;
+    const total = truncated ? null : allRows.length;
+    if (argv.all) return { total, page: null, has_more: truncated };
+    const page = argv.page ?? 1;
+    const start = (page - 1) * (argv.limit ?? 100);
+    return { total, page, has_more: truncated || start + rows.length < allRows.length };
   }
-  return formatPaginationHint(pageContext);
+  return {
+    total: pageContext?.total ?? null,
+    page: pageContext?.page ?? argv.page ?? 1,
+    has_more: Boolean(pageContext?.has_more),
+  };
+}
+
+/**
+ * "There's more" notice for a resolveListScope() result, or null once
+ * everything is shown. Handlers print it to stderr in every format, so a
+ * script reading a single page of JSON/CSV is told it got part of the result.
+ * Mirrors formatPaginationHint() for the plain single-page case; when
+ * `--totals` forced a full fetch without `--all`, builds the equivalent hint
+ * from the displayed slice vs the full fetched set. `--all` hitting the cap is
+ * reported by the handlers' own truncation notice instead.
+ */
+export function formatScopeHint(argv, scope) {
+  if (argv.all) return null;
+  if (!scope.allRows) return formatPaginationHint(scope.pageContext);
+  const { page, has_more } = scopePagination(argv, scope);
+  if (!has_more) return null;
+  const truncatedSuffix = scope.truncated ? '+ (truncated)' : '';
+  return `(showing ${scope.rows.length} of ${scope.allRows.length}${truncatedSuffix}; use --page ${page + 1} for more)`;
 }
 
 /**

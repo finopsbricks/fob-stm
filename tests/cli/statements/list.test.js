@@ -72,3 +72,38 @@ describe('listStatementsHandler — scope/format orthogonality', () => {
     expect(out.stdout).toContain('TOTALS (2 statements)');
   });
 });
+
+describe('listStatementsHandler — partial results', () => {
+  let out;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    out = captureOutput();
+  });
+  afterEach(() => out.restore());
+
+  it('carries total, page and has_more in --json output and notes the partial result on stderr', async () => {
+    // Arrange
+    statements.list.mockResolvedValue({
+      data: [{ id: 'x1', file_name: 'one' }],
+      page_context: { count: 1, page: 1, per_page: 1, total: 3, has_more: true },
+    });
+
+    // Act
+    await listStatementsHandler({ page: 1, limit: 1, json: true });
+
+    // Assert
+    expect(JSON.parse(out.stdout)).toMatchObject({ count: 1, total: 3, page: 1, has_more: true, truncated: false });
+    expect(out.stderr).toContain('(showing 1 of 3 — page 1; use --page 2 for more)');
+  });
+
+  it('prints no notice when the page holds every matching row', async () => {
+    statements.list.mockResolvedValue({
+      data: [{ id: 'x1', file_name: 'one' }],
+      page_context: { count: 1, page: 1, per_page: 100, total: 1, has_more: false },
+    });
+
+    await listStatementsHandler({ page: 1, limit: 100, format: 'csv' });
+
+    expect(out.stderr).not.toContain('showing');
+  });
+});

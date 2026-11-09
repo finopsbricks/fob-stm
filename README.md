@@ -125,9 +125,22 @@ independent — format never changes which rows are fetched:
 - `--totals` aggregates over the full matching set even without `--all`; the *displayed* rows still
   respect `--limit`/`--page`.
 
-`--json` output includes `count` and `truncated` so a script can tell how many rows came back and
-whether the 15,000-row cap was hit, without scraping stderr (`--csv`/table still report a hit cap
-via a stderr note).
+`--json` output carries the pagination facts next to `data`, so a script can tell a partial
+result from a complete one without scraping stderr:
+
+```json
+{ "data": [...], "count": 500, "total": 597, "page": 1, "has_more": true, "truncated": false }
+```
+
+- `count`: rows in `data`.
+- `total`: rows matching the filters (`null` when unknown, e.g. the 15,000-row cap was hit).
+- `page`: the page returned (`null` for `--all`, which covers every page).
+- `has_more`: rows exist beyond `data`. Fetch `--page <page+1>`, or use `--all`.
+- `truncated`: `--all` hit the 15,000-row cap.
+
+Whenever more rows exist, every format (table, `--json`, `--csv`) also prints
+`(showing 500 of 597 — page 1; use --page 2 for more)` to stderr, and a hit cap prints a
+truncation note there too.
 
 ### Amount display
 

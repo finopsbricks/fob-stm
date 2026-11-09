@@ -137,3 +137,118 @@ describe('listTransactionsHandler — scope/format orthogonality', () => {
     expect(payload.count).toBe(2);
   });
 });
+
+describe('listTransactionsHandler — partial results', () => {
+  let out;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    out = captureOutput();
+  });
+  afterEach(() => out.restore());
+
+  // The API's page_context for page 1 of 597 matching rows at --limit 500.
+  const firstPageOf597 = {
+    data: [{ id: 't1', date: '2026-09-01', inflow: 100, outflow: 0 }],
+    page_context: { count: 500, page: 1, per_page: 500, total: 597, has_more: true },
+  };
+
+  it('carries total, page and has_more in --json output when more pages exist', async () => {
+    // Arrange
+    transactions.list.mockResolvedValue(firstPageOf597);
+
+    // Act
+    await listTransactionsHandler({ page: 1, limit: 500, json: true });
+
+    // Assert
+    const payload = JSON.parse(out.stdout);
+    expect(payload).toMatchObject({ count: 1, total: 597, page: 1, has_more: true, truncated: false });
+  });
+
+  it('prints the "showing N of M" notice to stderr for --format json', async () => {
+    transactions.list.mockResolvedValue(firstPageOf597);
+
+    await listTransactionsHandler({ page: 1, limit: 500, format: 'json' });
+
+    expect(out.stderr).toContain('(showing 500 of 597 — page 1; use --page 2 for more)');
+    expect(() => JSON.parse(out.stdout)).not.toThrow();
+  });
+
+  it('prints the notice to stderr, not into the data, for --format csv', async () => {
+    transactions.list.mockResolvedValue(firstPageOf597);
+
+    await listTransactionsHandler({ page: 1, limit: 500, format: 'csv' });
+
+    expect(out.stderr).toContain('showing 500 of 597');
+    expect(out.stdout).not.toContain('showing');
+  });
+
+  it('prints the notice to stderr for table output', async () => {
+    transactions.list.mockResolvedValue(firstPageOf597);
+
+    await listTransactionsHandler({ page: 1, limit: 500 });
+
+    expect(out.stderr).toContain('showing 500 of 597');
+    expect(out.stdout).not.toContain('showing');
+  });
+
+  it('reports has_more false and prints no notice on the last page', async () => {
+    transactions.list.mockResolvedValue({
+      data: [{ id: 't501', date: '2026-10-31', inflow: 0, outflow: 50 }],
+      page_context: { count: 97, page: 2, per_page: 500, total: 597, has_more: false },
+    });
+
+    await listTransactionsHandler({ page: 2, limit: 500, json: true });
+
+    expect(JSON.parse(out.stdout)).toMatchObject({ total: 597, page: 2, has_more: false });
+    expect(out.stderr).not.toContain('showing');
+  });
+
+  it('reports the full count and no further pages for --all', async () => {
+    transactions.getAll.mockResolvedValue([
+      { id: 't1', date: '2026-01-01', inflow: 100, outflow: 0 },
+      { id: 't2', date: '2026-01-02', inflow: 0, outflow: 50 },
+    ]);
+
+    await listTransactionsHandler({ all: true, json: true });
+
+    expect(JSON.parse(out.stdout)).toMatchObject({ count: 2, total: 2, page: null, has_more: false, truncated: false });
+    expect(out.stderr).not.toContain('showing');
+  });
+
+  it('reports an unknown total and more rows when --all hits the row cap', async () => {
+    transactions.getAll.mockResolvedValue(
+      Array.from({ length: 15000 }, (_, i) => ({ id: `t${i}`, date: '2026-01-01', inflow: 1, outflow: 0 })),
+    );
+
+    await listTransactionsHandler({ all: true, json: true });
+
+    expect(JSON.parse(out.stdout)).toMatchObject({ count: 15000, total: null, has_more: true, truncated: true });
+    expect(out.stderr).toContain('truncated to first 15000 rows');
+  });
+
+  it('computes total and has_more from the full set when --totals forces a full fetch', async () => {
+    transactions.getAll.mockResolvedValue([
+      { id: 't1', account_currency: 'INR', inflow: 100, outflow: 0 },
+      { id: 't2', account_currency: 'INR', inflow: 0, outflow: 50 },
+      { id: 't3', account_currency: 'INR', inflow: 10, outflow: 0 },
+    ]);
+
+    await listTransactionsHandler({ page: 1, limit: 2, json: true, totals: true });
+
+    expect(JSON.parse(out.stdout)).toMatchObject({ count: 2, total: 3, page: 1, has_more: true });
+    expect(out.stderr).toContain('(showing 2 of 3; use --page 2 for more)');
+  });
+
+  it('prints no notice on the last --totals page', async () => {
+    transactions.getAll.mockResolvedValue([
+      { id: 't1', account_currency: 'INR', inflow: 100, outflow: 0 },
+      { id: 't2', account_currency: 'INR', inflow: 0, outflow: 50 },
+      { id: 't3', account_currency: 'INR', inflow: 10, outflow: 0 },
+    ]);
+
+    await listTransactionsHandler({ page: 2, limit: 2, json: true, totals: true });
+
+    expect(JSON.parse(out.stdout)).toMatchObject({ count: 1, total: 3, page: 2, has_more: false });
+    expect(out.stderr).not.toContain('showing');
+  });
+});

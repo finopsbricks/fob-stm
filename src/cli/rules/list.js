@@ -6,7 +6,7 @@ import {
   formatCsv,
   formatDate,
 } from '../utils/format.js';
-import { buildColumnSelector, resolveListScope, formatScopeHint } from '../utils/list.js';
+import { buildColumnSelector, resolveListScope, scopePagination, formatScopeHint } from '../utils/list.js';
 import { clientFor } from '../_helpers.js';
 
 // API PUBLIC_FIELDS plus CLI-only derived columns (counts + cache subfields).
@@ -113,15 +113,18 @@ export async function listRulesHandler(argv) {
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
 
-  const { rows: rules, allRows, truncated, pageContext } = await resolveListScope(argv, {
+  const scope = await resolveListScope(argv, {
     list: stm.rules.list,
     getAll: stm.rules.getAll,
     searchParams: buildSearchParams(argv),
   });
+  const { rows: rules, allRows, truncated } = scope;
+  const pagination = scopePagination(argv, scope);
   const totals = argv.totals ? computeTotals(allRows) : null;
 
   if (format === 'json') {
-    const payload = { data: rules, count: rules.length, truncated };
+    /** @type {Record<string, any>} */
+    const payload = { data: rules, count: rules.length, ...pagination, truncated };
     if (totals) payload.totals = totals;
     emit(JSON.stringify(payload, null, 2), argv.output);
   } else if (format === 'csv') {
@@ -136,12 +139,12 @@ export async function listRulesHandler(argv) {
           align: selector.alignFor(fields),
         }),
       );
-      const hint = formatScopeHint(argv, { rows: rules, allRows, pageContext });
-      if (hint) console.log(`\n${hint}`);
     }
     if (totals) console.log(renderTotals(totals, truncated));
   }
 
+  const hint = formatScopeHint(argv, scope);
+  if (hint) console.error(hint);
   if (truncated) {
     console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
   }

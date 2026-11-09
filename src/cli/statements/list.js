@@ -9,7 +9,7 @@ import {
   formatCsv,
   formatDate,
 } from '../utils/format.js';
-import { buildColumnSelector, parseArchived, resolveListScope, formatScopeHint } from '../utils/list.js';
+import { buildColumnSelector, parseArchived, resolveListScope, scopePagination, formatScopeHint } from '../utils/list.js';
 import { scaleMilliAmount } from '../utils/amounts.js';
 
 // Milli-unit fields on a statement that the amount-display setting governs.
@@ -147,15 +147,18 @@ export async function listStatementsHandler(argv) {
   const fields = selector.parseFields(argv.fields);
   const format = argv.format ?? (argv.json ? 'json' : 'table');
 
-  const { rows: statements, allRows, truncated, pageContext } = await resolveListScope(argv, {
+  const scope = await resolveListScope(argv, {
     list: stm.statements.list,
     getAll: stm.statements.getAll,
     searchParams: buildSearchParams(argv),
   });
+  const { rows: statements, allRows, truncated } = scope;
+  const pagination = scopePagination(argv, scope);
   const totals = argv.totals ? computeTotals(allRows) : null;
 
   if (format === 'json') {
-    const payload = { data: statements.map(scaleStatement), count: statements.length, truncated };
+    /** @type {Record<string, any>} */
+    const payload = { data: statements.map(scaleStatement), count: statements.length, ...pagination, truncated };
     if (totals) payload.totals = totals;
     emit(JSON.stringify(payload, null, 2), argv.output);
   } else if (format === 'csv') {
@@ -170,12 +173,12 @@ export async function listStatementsHandler(argv) {
           align: selector.alignFor(fields),
         }),
       );
-      const hint = formatScopeHint(argv, { rows: statements, allRows, pageContext });
-      if (hint) console.log(`\n${hint}`);
     }
     if (totals) console.log(renderTotals(totals, truncated));
   }
 
+  const hint = formatScopeHint(argv, scope);
+  if (hint) console.error(hint);
   if (truncated) {
     console.error(`(truncated to first ${MAX_ALL_ROWS} rows — refine filters to narrow the result set)`);
   }

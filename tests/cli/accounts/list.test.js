@@ -65,3 +65,38 @@ describe('listAccountsHandler', () => {
     expect(accounts.getAll).not.toHaveBeenCalled();
   });
 });
+
+describe('listAccountsHandler — partial results', () => {
+  let out;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    out = captureOutput();
+  });
+  afterEach(() => out.restore());
+
+  it('carries total, page and has_more in --json output and notes the partial result on stderr', async () => {
+    // Arrange
+    accounts.list.mockResolvedValue({
+      data: [{ id: 'x1', name: 'one' }],
+      page_context: { count: 1, page: 1, per_page: 1, total: 3, has_more: true },
+    });
+
+    // Act
+    await listAccountsHandler({ page: 1, limit: 1, json: true });
+
+    // Assert
+    expect(JSON.parse(out.stdout)).toMatchObject({ count: 1, total: 3, page: 1, has_more: true, truncated: false });
+    expect(out.stderr).toContain('(showing 1 of 3 — page 1; use --page 2 for more)');
+  });
+
+  it('prints no notice when the page holds every matching row', async () => {
+    accounts.list.mockResolvedValue({
+      data: [{ id: 'x1', name: 'one' }],
+      page_context: { count: 1, page: 1, per_page: 100, total: 1, has_more: false },
+    });
+
+    await listAccountsHandler({ page: 1, limit: 100, format: 'csv' });
+
+    expect(out.stderr).not.toContain('showing');
+  });
+});
