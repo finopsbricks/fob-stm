@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-09
+
+### Added
+- `transactions|statements|accounts|rules list` JSON output (`--json`, `--format json`) carries
+  `total`, `page` and `has_more` next to `data`, `count` and `truncated`. A script can now tell
+  that `--limit 500` returned 500 of 597 rows; before, it saw `count: 500, truncated: false` and
+  no sign of the rest. Existing keys are unchanged.
+
+### Changed
+- The `(showing N of M — page P; use --page P+1 for more)` notice now prints to stderr in every
+  format whenever more rows exist. It used to appear only in table output, on stdout.
+
+### Fixed
+- With `--totals` and no `--all`, the "showing N of M" notice no longer appears on the last page.
+
 ## [0.9.0] - 2026-11-09
 
 ### Added
