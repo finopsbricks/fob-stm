@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `accounts coverage <id> [--from --to] [--json]`: the days an account's statements cover, the gaps
+  (including before the first and after the last statement when a window is given), upload status, and
+  statements not yet `complete`. Client: `accounts.coverage(id, { date_from, date_to })`.
+- `reports show statement-coverage --from --to [--accounts]`: one row per account with
+  `account, data_until, gaps, gap_days, incomplete`, for a month-end completeness check. `--json` prints
+  the raw report.
+
+Both need statements app with `GET /api/v1/accounts/:id/coverage` and `GET /api/v1/reports/statement-coverage`.
+
 ## [0.8.0] - 2026-11-06
 
 ### Added

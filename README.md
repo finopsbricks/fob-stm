@@ -66,7 +66,12 @@ fob-stm accounts list
 fob-stm accounts list --category bank --status active
 fob-stm accounts show <id>
 fob-stm accounts balance <id> 2026-03-31
+fob-stm accounts coverage <id> --from 2026-03-01 --to 2026-03-31
 ```
+
+`accounts coverage` shows the days the account's statements cover, the gaps, how current its
+data is, and statements not yet `complete`. With `--from`/`--to`, the days before the first
+statement and after the last in that window count as gaps too.
 
 ### Transactions
 
@@ -96,6 +101,7 @@ fob-stm statements submit-password <id> --password ****   # for encrypted PDFs
 fob-stm rules list
 fob-stm rules preview <id>
 fob-stm reports show <report> --from 2026-01-01 --to 2026-03-31
+fob-stm reports show statement-coverage --from 2026-03-01 --to 2026-03-31   # month-end check
 fob-stm categories list
 fob-stm entities list
 ```

@@ -27,4 +27,17 @@
  * @property {number} balance
  */
 
+/**
+ * Statement coverage for one account (`/api/v1/accounts/:id/coverage`, and each
+ * entry of the `statement-coverage` report).
+ * @typedef {Object} AccountCoverage
+ * @property {string} account_id
+ * @property {string} account_name
+ * @property {{ date_from: string|null, date_to: string|null }} [period]
+ * @property {Array<{ start: string, end: string }>} coverage - Merged statement periods
+ * @property {Array<{ gap_start: string, gap_end: string, days: number }>} gaps - Days no statement covers
+ * @property {Array<{ id: string, file_name: string|null, period_start: string|null, period_end: string|null, step: string }>} incomplete_statements - Statements not at `complete`
+ * @property {{ data_coverage_date: string|null, last_transaction_date: string|null, days_since: number|null, status: string, upload_frequency: string }} upload_status
+ */
+
 export {};

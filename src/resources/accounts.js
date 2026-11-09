@@ -15,6 +15,7 @@
  * @typedef {import('../types/general/index.js').Transport} Transport
  * @typedef {import('../types/api/Account.types.js').Account} Account
  * @typedef {import('../types/api/Account.types.js').AccountBalance} AccountBalance
+ * @typedef {import('../types/api/Account.types.js').AccountCoverage} AccountCoverage
  */
 
 /**
@@ -27,6 +28,7 @@
  * @property {(params?: object) => Promise<Account[]>} getAll
  * @property {(id: string) => Promise<Account|null>} get
  * @property {(id: string, asOf: string) => Promise<AccountBalance|null>} balance
+ * @property {(id: string, window?: { date_from?: string, date_to?: string }) => Promise<AccountCoverage|null>} coverage
  * @property {(data: object) => Promise<Account|null>} create
  * @property {(id: string, data: object) => Promise<Account|null>} update
  * @property {(id: string, status: string) => Promise<Account|null>} setStatus
@@ -63,6 +65,10 @@ export function buildAccounts(ctx) {
     /** Computed EOD balance as of a date (YYYY-MM-DD). */
     balance: (id, asOf) =>
       ctx.get(`/api/v1/accounts/${encodeURIComponent(id)}/balance`, { searchParams: { as_of: asOf } }).then(unwrap),
+
+    /** Statement coverage, gaps, upload status and unfinished statements; optional YYYY-MM-DD window. */
+    coverage: (id, window = {}) =>
+      ctx.get(`/api/v1/accounts/${encodeURIComponent(id)}/coverage`, { searchParams: window }).then(unwrap),
 
     /** Create an account (`data` uses API field names). Returns the created record. */
     create: (data) => ctx.post('/api/v1/accounts', data).then(unwrap),

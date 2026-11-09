@@ -28,6 +28,21 @@ describe('accounts resource namespace (via fobStm)', () => {
     expect(acct).toEqual({ id: '7', name: 'Acme' });
   });
 
+  it('coverage() GETs /accounts/:id/coverage with the window and returns the unwrapped body', async () => {
+    const calls = mockFetch([{ data: { account_id: '7', gaps: [] } }]);
+    const body = await fobStm(CREDS).accounts.coverage('7', { date_from: '2024-01-01', date_to: '2024-01-31' });
+    expect(body).toEqual({ account_id: '7', gaps: [] });
+    expect(calls[0].url).toBe(
+      'https://statements.finopsbricks.com/api/v1/accounts/7/coverage?date_from=2024-01-01&date_to=2024-01-31',
+    );
+  });
+
+  it('coverage() sends no window params when none are given', async () => {
+    const calls = mockFetch([{ data: { account_id: '7' } }]);
+    await fobStm(CREDS).accounts.coverage('7', { date_from: undefined, date_to: undefined });
+    expect(calls[0].url).toBe('https://statements.finopsbricks.com/api/v1/accounts/7/coverage');
+  });
+
   it('list() returns the { data, page_context } envelope', async () => {
     mockFetch([{ data: [{ id: '1' }], page_context: { has_more: false } }]);
     const res = await fobStm(CREDS).accounts.list({ category: 'bank' });

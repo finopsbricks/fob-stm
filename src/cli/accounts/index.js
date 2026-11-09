@@ -9,6 +9,7 @@ import { safe, listOptions, jsonOption, idJsonCommand } from '../_helpers.js';
 import { listAccountsHandler } from './list.js';
 import { showAccountHandler } from './show.js';
 import { balanceAccountHandler } from './balance.js';
+import { coverageAccountHandler } from './coverage.js';
 import { createAccountHandler } from './create.js';
 import { updateAccountHandler } from './update.js';
 import {
@@ -85,6 +86,17 @@ export function buildAccountsCommand() {
       .argument('<id>', 'Account ID')
       .argument('[yyyy-mm-dd]', 'As-of date; defaults to today (local TZ)'),
   ).action(safe(balanceAccountHandler));
+
+  jsonOption(
+    accounts
+      .command('coverage')
+      .description(
+        "Show which days an account's statements cover, the gaps, upload status, and statements not yet complete",
+      )
+      .argument('<id>', 'Account ID')
+      .option('--from <date>', 'Window start (YYYY-MM-DD); adds the gap before the first statement')
+      .option('--to <date>', 'Window end (YYYY-MM-DD); adds the gap after the last statement'),
+  ).action(safe(coverageAccountHandler));
 
   accountFieldOptions(accounts.command('create').description('Create a new account'))
     .requiredOption('--name <name>', 'Account name')

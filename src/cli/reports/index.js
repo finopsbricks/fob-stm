@@ -12,7 +12,7 @@ export function buildReportsCommand() {
 
   reports
     .command('show')
-    .description('Compute and print a report (JSON output)')
+    .description('Compute and print a report (JSON output; statement-coverage prints a table)')
     .addArgument(new Argument('<name>', 'Report name').choices(REPORT_NAMES))
     .option('--from <date>', 'Start date (YYYY-MM-DD)')
     .option('--to <date>', 'End date (YYYY-MM-DD)')
@@ -21,6 +21,7 @@ export function buildReportsCommand() {
     .option('--particulars <text>', 'Filter by particulars (free-text)')
     .option('--entity <entity>', 'Filter by entity')
     .option('--category <category>', 'Filter by category')
+    .option('--json', 'Output raw JSON (statement-coverage prints a table without it; other reports always print JSON)')
     .action(safe(showReportHandler));
 
   return reports;
