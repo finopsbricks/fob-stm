@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-09
+
 ### Added
 - `accounts coverage <id> [--from --to] [--json]`: the days an account's statements cover, the gaps
   (including before the first and after the last statement when a window is given), upload status, and
