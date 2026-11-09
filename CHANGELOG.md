@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-09
+
+### Added
+- `transactions delete <ids> [--ids-file <path>] [--dry-run] [-y] [--json]`: permanently delete
+  transactions by id. Ids come comma-separated, or from a file (one per line, or a JSON array).
+  Each row is fetched and shown first; the command then asks, unless `--yes`. `--dry-run` shows
+  and deletes nothing. Loops `DELETE /api/v1/transactions/:id`, reports each id (`not found` for
+  ids that don't exist), carries on past failures and exits 1 if any id failed. `--json` gives
+  per-id results including the row as it was before deletion. Client: `transactions.delete(id)`.
+
 ## [0.10.0] - 2026-11-09
 
 ### Added
