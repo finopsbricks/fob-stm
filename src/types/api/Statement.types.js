@@ -13,6 +13,7 @@
  * @property {string} [error]
  * @property {string} [account_id]
  * @property {string} [account_name]
+ * @property {string} [account_currency] - The linked account's currency
  * @property {string} [account]  CLI-side alias sometimes present for the account label.
  * @property {boolean} [is_archived]
  * @property {string} [created_at]

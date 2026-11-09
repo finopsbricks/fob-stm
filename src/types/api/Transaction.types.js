@@ -16,6 +16,7 @@
  * @property {string} [account]
  * @property {string} [account_id]
  * @property {string} [account_name]
+ * @property {string} [account_currency] - The account's currency (transactions inherit it)
  * @property {string} [statement]
  * @property {string} [created_at]
  */
