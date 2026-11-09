@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-09
+
+### Fixed
+- `accounts balance <id> <yyyy-mm-dd>` ignored the date and always returned today's balance.
+
 ## [0.11.0] - 2026-11-09
 
 ### Added

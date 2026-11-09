@@ -22,7 +22,7 @@ function formatAmount(value) {
 export async function balanceAccountHandler(argv) {
   const stm = clientFor();
   const { id } = argv;
-  const date = argv['yyyy-mm-dd'] || todayLocal();
+  const date = argv.yyyyMmDd || todayLocal();
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error(`date must be in YYYY-MM-DD format, got: ${date}`);
