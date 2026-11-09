@@ -1,6 +1,6 @@
 # Fix `accounts balance` ignoring its date
 
-## Status: IN PROGRESS (~80%) — released as 0.9.1 in git; npm publish pending
+## Status: IN PROGRESS (~80%) — released as 0.11.1 in git; npm publish pending
 
 `fob-stm accounts balance <id> <yyyy-mm-dd>` always returns today's balance. The date never reaches the API.
 
@@ -21,7 +21,7 @@ Read `argv.yyyyMmDd`. Test through the command itself (`buildAccountsCommand().p
 ### Phase 1: Fix and test ✅
 - [x] `balance.js` reads `argv.yyyyMmDd`
 - [x] `tests/cli/accounts/balance.test.js`: the date argument reaches `accounts.balance`; no date means today
-- [x] CHANGELOG, version 0.9.1 (test fails without the fix, passes with it; 106 tests, typecheck clean)
+- [x] CHANGELOG, version 0.11.1 (test fails without the fix, passes with it; 106 tests, typecheck clean)
 
 ### Phase 2: Release 🔄
 - [x] Push with tag; Unison to alex-linux-pc
