@@ -8,6 +8,7 @@ import { safe, listOptions, jsonOption } from '../_helpers.js';
 import { listTransactionsHandler } from './list.js';
 import { showTransactionHandler } from './show.js';
 import { editTransactionHandler } from './edit.js';
+import { deleteTransactionsHandler } from './delete.js';
 
 export function buildTransactionsCommand() {
   const transactions = new Command('transactions').description('Query transactions');
@@ -68,6 +69,18 @@ export function buildTransactionsCommand() {
       .option('--particulars <text>', 'Set particulars (narration)')
       .option('-y, --yes', 'Skip confirmation'),
   ).action(safe(editTransactionHandler));
+
+  jsonOption(
+    transactions
+      .command('delete')
+      .description(
+        'Permanently delete transactions. Shows each row first and asks before deleting; --dry-run only shows.',
+      )
+      .argument('[ids]', 'Transaction ID(s), comma-separated')
+      .option('--ids-file <path>', 'Read IDs from a file: one per line, or a JSON array')
+      .option('--dry-run', 'Show what would be deleted, delete nothing')
+      .option('-y, --yes', 'Skip confirmation'),
+  ).action(safe(deleteTransactionsHandler));
 
   return transactions;
 }

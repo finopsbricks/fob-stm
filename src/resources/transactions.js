@@ -3,7 +3,7 @@
  * The `transactions` resource — every transaction endpoint, defined once.
  *
  * `buildTransactions(ctx)` binds a credential-carrying transport (see http.js
- * `createTransport`) into a flat namespace of read/update methods. This is what
+ * `createTransport`) into a flat namespace of read/update/delete methods. This is what
  * `fobStm(creds).transactions` is, and the single place transaction paths live —
  * the CLI handlers call these; they hold no paths of their own.
  *
@@ -28,6 +28,7 @@
  * @property {(criteria: object) => Promise<{ data: Transaction[], page_context: object|null }>} search
  * @property {(id: string, data: object) => Promise<Transaction|null>} update
  * @property {(id: string, data: object) => Promise<Transaction|null>} edit
+ * @property {(id: string) => Promise<null>} delete
  */
 
 /** Unwrap a single-record response body; null if there's no data.
@@ -58,5 +59,8 @@ export function buildTransactions(ctx) {
 
     /** Alias of `update` — edit metadata fields on a transaction. Returns the updated record. */
     edit: (id, data) => ctx.put(`/api/v1/transactions/${encodeURIComponent(id)}`, data).then(unwrap),
+
+    /** Permanently delete one transaction (DELETE, 204). Throws ApiError 404 if it isn't in the org. */
+    delete: (id) => ctx.delete(`/api/v1/transactions/${encodeURIComponent(id)}`).then(unwrap),
   };
 }

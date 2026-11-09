@@ -80,10 +80,20 @@ fob-stm transactions list --account <id> --from 2026-01-01 --to 2026-03-31
 fob-stm transactions list --currency USD           # filter by account currency
 fob-stm transactions list --totals                 # sums grouped by currency
 fob-stm transactions show <id>
+fob-stm transactions delete <id1>,<id2> --dry-run   # show what would be deleted
+fob-stm transactions delete --ids-file ids.txt      # one id per line, or a JSON array
+fob-stm transactions delete --ids-file ids.txt --yes --json
 ```
 
 Each row shows a `CCY` column (the account's currency; transactions inherit it).
 `--totals` groups sums **by currency** — money is never summed across currencies.
+
+`transactions delete` permanently deletes each id you list. It fetches every row first and shows
+it (date, account, amounts, particulars, type), then asks before deleting; `--yes` skips the
+question and `--dry-run` stops after showing. Ids that don't exist are reported as `not found`.
+The run goes on past a failed id, reports each one, and exits 1 if any id was missing or failed
+(a dry run too). `--json` prints one result per id (`id`, `ok`, `deleted`, `transaction`,
+`error`) on stdout, with the preview on stderr.
 
 ### Statements
 
