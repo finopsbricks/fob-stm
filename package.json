@@ -21,7 +21,7 @@
   ],
   "scripts": {
     "start": "node bin/cli.js",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "typecheck": "tsc -p jsconfig.json",
     "typecheck:watch": "tsc -p jsconfig.json --watch"
   },
